@@ -86,39 +86,40 @@ button{
 </head>
 
 <body>
-<div id="app"></div>
 
-<div id="content">
+<div id="app">
+  <div id="content">
 
-  <h3>Input Pembelian</h3>
+    <h3>Input Pembelian</h3>
 
-  <label>Tanggal</label>
-  <input type="date" id="date">
+    <label>Tanggal</label>
+    <input type="date" id="date">
+    <input id="invoice" readonly>
 
-  <input id="invoice" readonly>
+    <label>Supplier</label>
+    <input type="text" id="supplierSearch" placeholder="Cari supplier...">
+    <div id="supplierResult" class="search-result"></div>
 
-  <label>Supplier</label>
-  <input type="text" id="supplierSearch" placeholder="Cari supplier...">
-  <div id="supplierResult" class="search-result"></div>
+    <label>Produk</label>
+    <input type="text" id="productSearch" placeholder="Cari produk...">
+    <div id="productResult" class="search-result"></div>
 
-  <label>Produk</label>
-  <input type="text" id="productSearch" placeholder="Cari produk...">
-  <div id="productResult" class="search-result"></div>
+    <input type="number" id="qty" placeholder="Qty">
+    <input type="number" id="price" placeholder="Harga Satuan">
+    <input type="number" id="total" placeholder="Total" readonly>
 
-  <input type="number" id="qty" placeholder="Qty">
-  <input type="number" id="price" placeholder="Harga Satuan">
-  <input type="number" id="total" placeholder="Total" readonly>
+    <textarea id="note" placeholder="Keterangan"></textarea>
 
-  <textarea id="note" placeholder="Keterangan"></textarea>
+    <button id="saveBtn">Simpan</button>
 
-  <button id="saveBtn">Simpan</button>
+    <div class="card">
+      <h3>Daftar Pembelian</h3>
+      <div id="list"></div>
+    </div>
 
-<div class="card">
-  <h3>Daftar Pembelian</h3>
-  <div id="list"></div>
+  </div>
 </div>
-</div>
-</div>
+
 <!-- MODAL -->
 <div id="paymentModal" class="modal">
   <div class="modal-box">
