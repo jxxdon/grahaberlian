@@ -246,7 +246,18 @@
     });
 
     alert("Produk berhasil disimpan");
-    location.reload();
+
+// Reset form
+document.getElementById("productName").value = "";
+document.getElementById("price").value = "";
+document.getElementById("note").value = "";
+unitSelect.value = "";
+searchInput.value = "";
+selectedSubCategory = null;
+
+// Refresh list produk tanpa reload halaman
+loadProducts();
+
   });
 
   // =====================
