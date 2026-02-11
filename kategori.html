@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Kategori | Graha Berlian</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="global.css">
+</head>
+
+<body>
+
+<div class="content">
+
+  <!-- FORM -->
+  <div class="card">
+    <h3>Tambah Kategori</h3>
+
+    <select id="type">
+      <option value="">Pilih Jenis</option>
+      <option value="Pemasukan">Pemasukan</option>
+      <option value="Pengeluaran">Pengeluaran</option>
+    </select>
+
+    <input id="name" placeholder="Isi Kategori">
+
+    <button id="saveBtn">Simpan Kategori</button>
+  </div>
+
+  <!-- LIST -->
+  <div class="card">
+    <h3>Daftar Kategori</h3>
+    <div id="list"></div>
+  </div>
+
+</div>
+
+<!-- AUTH GUARD -->
+<script type="module" src="./auth-guard.js"></script>
+
+<!-- LOGIC -->
+<script type="module">
+  import { loadLayout } from "./layout.js";
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    query,
+    orderBy
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  loadLayout("Kategori");
+
+  const db = getFirestore();
+  const listEl = document.getElementById("list");
+
+  async function loadCategories() {
+    listEl.innerHTML = "";
+
+    const q = query(collection(db, "categories"), orderBy("createdAt", "desc"));
+    const snap = await getDocs(q);
+
+    snap.forEach(doc => {
+      const d = doc.data();
+
+      const badgeColor =
+        d.type === "Pemasukan" ? "admin" : "staff";
+
+      listEl.innerHTML += `
+        <div class="card" style="padding:12px;">
+          <strong>${d.name}</strong><br>
+          <span class="badge ${badgeColor}">
+            ${d.type}
+          </span>
+        </div>
+      `;
+    });
+  }
+
+  document.getElementById("saveBtn").addEventListener("click", async () => {
+
+    const type = document.getElementById("type").value;
+    const name = document.getElementById("name").value;
+
+    if (!type || !name) {
+      alert("Jenis dan kategori wajib diisi");
+      return;
+    }
+
+    await addDoc(collection(db, "categories"), {
+      type,
+      name,
+      createdAt: new Date()
+    });
+
+    document.getElementById("type").value = "";
+    document.getElementById("name").value = "";
+
+    loadCategories();
+    alert("Kategori berhasil ditambahkan");
+  });
+
+  loadCategories();
+</script>
+
+</body>
+</html>
