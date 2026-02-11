@@ -1,26 +1,21 @@
-// src/login.js
-import { auth } from "./firebase.js";
-import { signInWithEmailAndPassword } from "firebase/auth";
+/import { auth } from "./firebase.js";
+import { signInWithEmailAndPassword } from
+  "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-const loginBtn = document.getElementById("loginBtn");
+const btn = document.getElementById("loginBtn");
 const errorEl = document.getElementById("error");
 
-loginBtn.addEventListener("click", async () => {
+btn.addEventListener("click", async () => {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
 
   errorEl.textContent = "";
 
-  if (!email || !password) {
-    errorEl.textContent = "Email dan password wajib diisi";
-    return;
-  }
-
   try {
     await signInWithEmailAndPassword(auth, email, password);
-    // BERHASIL LOGIN
     window.location.href = "dashboard.html";
-  } catch (err) {
-    errorEl.textContent = "Login gagal";
+  } catch (e) {
+    errorEl.textContent = "Email atau password salah";
   }
 });
+
