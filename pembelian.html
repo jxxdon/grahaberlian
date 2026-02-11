@@ -10,8 +10,11 @@ body{
   font-family: sans-serif;
   background:#f3f4f6;
   margin:0;
+}
+#content{
   padding:16px;
 }
+
 
 .card{
   background:white;
@@ -84,7 +87,9 @@ button{
 
 <body>
 <div id="app"></div>
-<div class="card">
+
+<div id="content">
+
   <h3>Input Pembelian</h3>
 
   <label>Tanggal</label>
@@ -201,15 +206,21 @@ async function loadProducts(){
   });
 }
 
-// =================== SEARCH ===================
-
 // ================= SEARCH =================
 
-// ⬇️ TAMBAHKAN DI SINI
 const supplierSearch = document.getElementById("supplierSearch");
 const supplierResult = document.getElementById("supplierResult");
 const productSearch = document.getElementById("productSearch");
 const productResult = document.getElementById("productResult");
+
+const qty = document.getElementById("qty");
+const price = document.getElementById("price");
+const total = document.getElementById("total");
+const invoice = document.getElementById("invoice");
+const date = document.getElementById("date");
+const note = document.getElementById("note");
+const saveBtn = document.getElementById("saveBtn");
+const list = document.getElementById("list");
   
 supplierSearch.addEventListener("input",()=>{
   supplierResult.innerHTML="";
@@ -355,11 +366,13 @@ window.savePayment=async function(){
   loadPurchases();
 };
 
-loadSuppliers();
-loadProducts();
+await loadSuppliers();
+await loadProducts();
 loadPurchases();
 
+
 </script>
+</div>
 
 </body>
 </html>
