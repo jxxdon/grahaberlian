@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Laporan</title>
+
+  <link rel="stylesheet" href="global.css" />
+
+  <!-- Firebase -->
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="auth-guard.js"></script>
+  <script type="module" src="layout.js"></script>
+</head>
+
+<body>
+  <!-- Wrapper otomatis dari layout.js -->
+  <div id="app"></div>
+
+  <script type="module">
+    import { db } from "./firebase.js";
+    import {
+      collection,
+      getDocs
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const app = document.getElementById("app");
+
+    app.innerHTML = `
+      <div class="page-wrapper">
+        <div class="page-header">
+          <h2>📊 Laporan</h2>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <div class="laporan-grid">
+              <div class="laporan-box">
+                <h3>Total Penjualan</h3>
+                <p id="totalPenjualan">Rp 0</p>
+              </div>
+
+              <div class="laporan-box">
+                <h3>Total Pembelian</h3>
+                <p id="totalPembelian">Rp 0</p>
+              </div>
+
+              <div class="laporan-box">
+                <h3>Total Hutang</h3>
+                <p id="totalHutang">Rp 0</p>
+              </div>
+
+              <div class="laporan-box">
+                <h3>Total Piutang</h3>
+                <p id="totalPiutang">Rp 0</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    async function loadLaporan() {
+      let totalPenjualan = 0;
+      let totalPembelian = 0;
+      let totalHutang = 0;
+      let totalPiutang = 0;
+
+      const penjualanSnap = await getDocs(collection(db, "penjualan"));
+      penjualanSnap.forEach(doc => {
+        totalPenjualan += doc.da
