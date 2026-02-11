@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Produk | Graha Berlian</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="global.css">
+</head>
+
+<body>
+
+<div class="content">
+
+  <!-- FORM -->
+  <div class="card">
+    <h3>Tambah Produk</h3>
+
+    <input id="name" placeholder="Nama Produk">
+
+    <select id="category">
+      <option value="">Pilih Kategori</option>
+    </select>
+
+    <textarea id="description" placeholder="Keterangan"></textarea>
+
+    <button id="saveBtn">Simpan Produk</button>
+  </div>
+
+  <!-- LIST -->
+  <div class="card">
+    <h3>Daftar Produk</h3>
+    <div id="list"></div>
+  </div>
+
+</div>
+
+<!-- AUTH GUARD -->
+<script type="module" src="./auth-guard.js"></script>
+
+<!-- LOGIC -->
+<script type="module">
+  import { loadLayout } from "./layout.js";
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    query,
+    orderBy
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  loadLayout("Produk");
+
+  const db = getFirestore();
+  const categorySelect = document.getElementById("category");
+  const listEl = document.getElementById("list");
+
+  // Load kategori dari Firestore
+  async function loadCategories() {
+    const snap = await getDocs(collection(db, "categories"));
+
+    categorySelect.innerHTML = `<option value="">Pilih Kategori</option>`;
+
+    snap.forEach(doc => {
+      const d = doc.data();
+
+      categorySelect.innerHTML += `
+        <option value="${doc.id}" data-name="${d.name}">
+          ${d.name} (${d.type})
+        </option>
+      `;
+    });
+  }
+
+  // Load produk
+  async function loadProducts() {
+    listEl.innerHTML = "";
+
+    const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
+    const snap = await getDocs(q);
+
+    snap.forEach(doc => {
+      const d = doc.data();
+
+      listEl.innerHTML += `
+        <div class="card" style="padding:12px;">
+          <strong>${d.name}</strong><br>
+          📂 ${d.categoryName}<br>
+          📝 ${d.description || "-"}
+        </div>
+      `;
+    });
+  }
+
+  document.getElementById("saveBtn").addEventListener("click", async () => {
+
+    const name = document.getElementById("name").value;
+    const categoryOption = categorySelect.options[categorySelect.selectedIndex];
+    const categoryId = categorySelect.value;
+    const categoryName = categoryOption.getAttribute("data-name");
+    const description = document.getElementById("description").value;
+
+    if (!name || !categoryId) {
+      alert("Nama produk dan kategori wajib diisi");
+      return;
+    }
+
+    await addDoc(collection(db, "products"), {
+      name,
+      categoryId,
+      categoryName,
+      description,
+      createdAt: new Date()
+    });
+
+    document.getElementById("name").value = "";
+    document.getElementById("description").value = "";
+    categorySelect.value = "";
+
+    loadProducts();
+    alert("Produk berhasil ditambahkan");
+  });
+
+  loadCategories();
+  loadProducts();
+</script>
+
+</body>
+</html>
