@@ -1,17 +1,8 @@
-// src/auth-guard.js
 import { auth } from "./firebase.js";
-import { onAuthStateChanged, signOut } from "firebase/auth";
-
-const logoutBtn = document.getElementById("logoutBtn");
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 onAuthStateChanged(auth, (user) => {
   if (!user) {
-    // BELUM LOGIN → BALIK KE LOGIN
     window.location.href = "login.html";
   }
-});
-
-logoutBtn.addEventListener("click", async () => {
-  await signOut(auth);
-  window.location.href = "login.html";
 });
