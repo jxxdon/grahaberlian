@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Penjualan | Graha Berlian</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="global.css">
+</head>
+
+<body>
+
+<div class="content">
+
+  <!-- FORM -->
+  <div class="card">
+    <h3>Input Penjualan</h3>
+
+    <select id="customer">
+      <option value="">Pilih Konsumen</option>
+    </select>
+
+    <select id="product">
+      <option value="">Pilih Produk</option>
+    </select>
+
+    <input type="number" id="qty" placeholder="Qty">
+
+    <input type="number" id="price" placeholder="Harga Satuan" readonly>
+
+    <input type="number" id="total" placeholder="Total" readonly>
+
+    <select id="paymentMethod">
+      <option value="">Cara Bayar</option>
+    </select>
+
+    <input type="date" id="date">
+
+    <button id="saveBtn">Simpan Penjualan</button>
+  </div>
+
+  <!-- LIST -->
+  <div class="card">
+    <h3>Daftar Penjualan</h3>
+    <div id="list"></div>
+  </div>
+
+</div>
+
+<script type="module" src="./auth-guard.js"></script>
+
+<script type="module">
+  import { loadLayout } from "./layout.js";
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    query,
+    orderBy,
+    doc,
+    getDoc
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  loadLayout("Penjualan");
+
+  const db = getFirestore();
+
+  const customerSelect = document.getElementById("customer");
+  const productSelect = document.getElementById("product");
+  const paymentSelect = document.getElementById("paymentMethod");
+  const qtyInput = document.getElementById("qty");
+  const priceInput = document.getElementById("price");
+  const totalInput = document.getElementById("total");
+  const listEl = document.getElementById("list");
+
+  // Load Konsumen
+  async function loadCustomers() {
+    const snap = await getDocs(collection(db, "customers"));
+    snap.forEach(doc => {
+      const d = doc.data();
+      customerSelect.innerHTML += `
+        <option value="${doc.id}" data-name="${d.fullName}">
+          ${d.fullName}
+        </option>
+      `;
+    });
+  }
+
+  // Load Produk
+  async function loadProducts() {
+    const snap = await getDocs(collection(db, "products"));
+    snap.forEach(doc => {
+      const d = doc.data();
+      productSelect.innerHTML += `
+        <option value="${doc.id}"
+          data-name="${d.name}"
+          data-price="${d.price}"
+          data-unit="${d.unit}">
+          ${d.name}
+        </option>
+      `;
+    });
+  }
+
+  // Load Cara Bayar
+  async function loadPayments() {
+    const snap = await getDocs(collection(db, "payment_methods"));
+    snap.forEach(doc => {
+      const d = doc.data();
+      paymentSelect.innerHTML += `
+        <option value="${d.name}">
+          ${d.name}
+        </option>
+      `;
+    });
+  }
+
+  // Auto isi harga saat pilih produk
+  productSelect.addEventListener("change", () => {
+    const option = productSelect.options[productSelect.selectedIndex];
+    const price = option.getAttribute("data-price") || 0;
+    priceInput.value = price;
+    calculateTotal();
+  });
+
+  qtyInput.addEventListener("input", calculateTotal);
+
+  function calculateTotal() {
+    const qty = Number(qtyInput.value) || 0;
+    const price = Number(priceInput.value) || 0;
+    totalInput.value = qty * price;
+  }
+
+  // Simpan transaksi
+  document.getElementById("saveBtn").addEventListener("click", async () => {
+
+    const customerOption = customerSelect.options[customerSelect.selectedIndex];
+    const productOption = productSelect.options[productSelect.selectedIndex];
+
+    const customerId = customerSelect.value;
+    const customerName = customerOption.getAttribute("data-name");
+
+    const productId = productSelect.value;
+    const productName = productOption.getAttribute("data-name");
+    const unit = productOption.getAttribute("data-unit");
+
+    const qty = Number(qtyInput.value);
+    const price = Number(priceInput.value);
+    const total = Number(totalInput.value);
+    const paymentMethod = paymentSelect.value;
+    const date = document.getElementById("date").value;
+
+    if (!customerId || !productId || !qty || !paymentMethod) {
+      alert("Lengkapi semua data");
+      return;
+    }
+
+    await addDoc(collection(db, "sales"), {
+      customerId,
+      customerName,
+      productId,
+      productName,
+      qty,
+      unit,
+      price,
+      total,
+      paymentMethod,
+      date,
+      createdAt: new Date()
+    });
+
+    alert("Penjualan berhasil disimpan");
+    location.reload();
+  });
+
+  // Load list penjualan
+  async function loadSales() {
+    const q = query(collection(db, "sales"), orderBy("createdAt", "desc"));
+    const snap = await getDocs(q);
+
+    snap.forEach(doc => {
+      const d = doc.data();
+
+      listEl.innerHTML += `
+        <div class="card" style="padding:12px;">
+          <strong>${d.productName}</strong><br>
+          ${d.customerName}<br>
+          ${d.qty} ${d.unit}<br>
+          💰 Rp ${Number(d.total).toLocaleString()}
+        </div>
+      `;
+    });
+  }
+
+  loadCustomers();
+  loadProducts();
+  loadPayments();
+  loadSales();
+</script>
+
+</body>
+</html>
