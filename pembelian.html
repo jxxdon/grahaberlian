@@ -162,10 +162,12 @@
     snap.forEach(doc => {
       const d = doc.data();
       products.push({
-        id: doc.id,
-        name: d.name,
-        unit: d.unit
-      });
+  id: doc.id,
+  name: d.name,
+  unit: d.unit,
+  price: d.price || 0
+});
+
     });
   }
 
@@ -262,10 +264,15 @@
         const div = document.createElement("div");
         div.textContent = s.name;
         div.onclick = () => {
-          selectedSupplier = s;
-          supplierSearch.value = s.name;
-          supplierResult.innerHTML = "";
-        };
+  selectedProduct = p;
+  productSearch.value = p.name;
+  productResult.innerHTML = "";
+
+  // Auto isi harga
+  priceInput.value = p.price || 0;
+  calculateTotal();
+};
+
         supplierResult.appendChild(div);
       });
   });
