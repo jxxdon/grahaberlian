@@ -53,6 +53,7 @@
     </select>
 
     <input type="date" id="date">
+<textarea id="note" placeholder="Keterangan"></textarea>
 
     <button id="saveBtn">Simpan Penjualan</button>
   </div>
@@ -92,6 +93,7 @@
   const totalInput = document.getElementById("total");
   const paymentSelect = document.getElementById("paymentMethod");
   const listEl = document.getElementById("list");
+  const note = document.getElementById("note").value;
 
   let customers = [];
   let products = [];
@@ -140,14 +142,16 @@
     snap.forEach(doc => {
       const d = doc.data();
 
-      listEl.innerHTML += `
-        <div class="card" style="padding:12px;">
-          <strong>${d.productName}</strong><br>
-          ${d.customerName}<br>
-          ${d.qty} ${d.unit}<br>
-          💰 Rp ${Number(d.total).toLocaleString()}
-        </div>
-      `;
+     listEl.innerHTML += `
+  <div class="card" style="padding:12px;">
+    <strong>${d.productName}</strong><br>
+    ${d.customerName}<br>
+    ${d.qty} ${d.unit}<br>
+    💰 Rp ${Number(d.total).toLocaleString()}<br>
+    📝 ${d.note || "-"}
+  </div>
+`;
+
     });
   }
 
@@ -235,6 +239,7 @@
       total,
       paymentMethod,
       date,
+      note,
       createdAt: new Date()
     });
 
