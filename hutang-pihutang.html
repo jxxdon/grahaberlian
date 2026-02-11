@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Hutang - Piutang | Graha Berlian</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="global.css">
+
+<style>
+.search-result {
+  background: #fff;
+  border-radius: 8px;
+  margin-top: 4px;
+  max-height: 150px;
+  overflow-y: auto;
+  box-shadow: 0 4px 10px rgba(0,0,0,.08);
+}
+
+.search-result div {
+  padding: 8px;
+  cursor: pointer;
+}
+
+.search-result div:hover {
+  background: #e0e7ff;
+}
+
+.stat-card {
+  padding: 12px;
+  border-radius: 12px;
+  background: #f3f4f6;
+  margin-top: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="content">
+
+  <!-- FORM -->
+  <div class="card">
+    <h3>Input Hutang / Piutang</h3>
+
+    <select id="type">
+      <option value="">Pilih Jenis</option>
+      <option value="Hutang">Hutang</option>
+      <option value="Piutang">Piutang</option>
+    </select>
+
+    <label>Supplier</label>
+    <input type="text" id="supplierSearch" placeholder="Cari supplier...">
+    <div id="supplierResult" class="search-result"></div>
+
+    <input type="date" id="date">
+    <input type="number" id="amount" placeholder="Nominal">
+    <textarea id="note" placeholder="Keterangan"></textarea>
+
+    <button id="saveBtn">Simpan</button>
+  </div>
+
+  <!-- LIST -->
+  <div class="card">
+    <h3>Daftar Hutang & Piutang</h3>
+    <div id="list"></div>
+  </div>
+
+</div>
+
+<script type="module" src="./auth-guard.js"></script>
+
+<script type="module">
+import { loadLayout } from "./layout.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  orderBy
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+loadLayout("Hutang - Piutang");
+
+const db = getFirestore();
+
+const supplierSearch = document.getElementById("supplierSearch");
+const supplierResult = document.getElementById("supplierResult");
+const listEl = document.getElementById("list");
+
+let suppliers = [];
+let selectedSupplier = null;
+
+// ====================
+// LOAD SUPPLIERS
+// ====================
+async function loadSuppliers(){
+  const snap = await getDocs(collection(db, "suppliers"));
+  suppliers = [];
+
+  snap.forEach(doc=>{
+    suppliers.push({
+      id: doc.id,
+      name: doc.data().companyName || doc.data().name
+    });
+  });
+}
+
+// ====================
+// SEARCH SUPPLIER
+// ====================
+supplierSearch.addEventListener("input", ()=>{
+  const keyword = supplierSearch.value.toLowerCase();
+  supplierResult.innerHTML = "";
+
+  suppliers
+    .filter(s=>s.name.toLowerCase().includes(keyword))
+    .slice(0,10)
+    .forEach(s=>{
+      const div = document.createElement("div");
+      div.textContent = s.name;
+
+      div.onclick = ()=>{
+        selectedSupplier = s;
+        supplierSearch.value = s.name;
+        supplierResult.innerHTML = "";
+      };
+
+      supplierResult.appendChild(div);
+    });
+});
+
+// ====================
+// SAVE DATA
+// ====================
+document.getElementById("saveBtn").addEventListener("click", async ()=>{
+
+  const type = document.getElementById("type").value;
+  const date = document.getElementById("date").value;
+  const amount = Number(document.getElementById("amount").value);
+  const note = document.getElementById("note").value;
+
+  if(!type || !selectedSupplier || !amount){
+    alert("Lengkapi semua data");
+    return;
+  }
+
+  await addDoc(collection(db, "debts"), {
+    type,
+    supplierId: selectedSupplier.id,
+    supplierName: selectedSupplier.name,
+    date,
+    amount,
+    note,
+    createdAt: new Date()
+  });
+
+  alert("Data berhasil disimpan");
+
+  // Reset form
+  document.getElementById("type").value = "";
+  document.getElementById("date").value = "";
+  document.getElementById("amount").value = "";
+  document.getElementById("note").value = "";
+  supplierSearch.value = "";
+  selectedSupplier = null;
+
+  loadDebts();
+});
+
+// ====================
+// LOAD LIST
+// ====================
+async function loadDebts(){
+
+  listEl.innerHTML = "";
+
+  const q = query(
+    collection(db, "debts"),
+    orderBy("createdAt","desc")
+  );
+
+  const snap = await getDocs(q);
+
+  snap.forEach(doc=>{
+    const d = doc.data();
+
+    listEl.innerHTML += `
+      <div class="stat-card">
+        <strong>${d.type}</strong><br>
+        ${d.supplierName}<br>
+        💰 Rp ${Number(d.amount).toLocaleString("id-ID")}<br>
+        📅 ${d.date}<br>
+        📝 ${d.note || "-"}
+      </div>
+    `;
+  });
+}
+
+loadSuppliers();
+loadDebts();
+
+</script>
+
+</body>
+</html>
