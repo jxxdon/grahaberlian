@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Konsumen | Graha Berlian</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="global.css">
+</head>
+
+<body>
+
+<div class="content">
+
+  <!-- FORM -->
+  <div class="card">
+    <h3>Tambah Konsumen</h3>
+
+    <input id="fullName" placeholder="Nama lengkap">
+    <input id="phone" placeholder="No HP / WhatsApp">
+    <textarea id="address" placeholder="Alamat"></textarea>
+    <input id="city" placeholder="Kota">
+
+    <label>Tanggal daftar</label>
+    <input type="date" id="registerDate">
+
+    <input id="email" placeholder="Email">
+
+    <label>Tanggal lahir</label>
+    <input type="date" id="birthDate">
+
+    <select id="gender">
+      <option value="">Jenis kelamin</option>
+      <option value="Laki-laki">Laki-laki</option>
+      <option value="Perempuan">Perempuan</option>
+    </select>
+
+    <input id="job" placeholder="Pekerjaan">
+    <textarea id="note" placeholder="Keterangan"></textarea>
+
+    <select id="isActive">
+      <option value="true">Aktif</option>
+      <option value="false">Tidak Aktif</option>
+    </select>
+
+    <button id="saveBtn">Simpan Konsumen</button>
+  </div>
+
+  <!-- LIST -->
+  <div class="card">
+    <h3>Daftar Konsumen</h3>
+    <div id="list"></div>
+  </div>
+
+</div>
+
+<!-- AUTH GUARD -->
+<script type="module" src="./auth-guard.js"></script>
+
+<!-- LOGIC -->
+<script type="module">
+  import { loadLayout } from "./layout.js";
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    query,
+    orderBy
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  loadLayout("Konsumen");
+
+  const db = getFirestore();
+  const listEl = document.getElementById("list");
+
+  async function loadCustomers() {
+    listEl.innerHTML = "";
+
+    const q = query(collection(db, "customers"), orderBy("createdAt", "desc"));
+    const snap = await getDocs(q);
+
+    snap.forEach(doc => {
+      const d = doc.data();
+
+      listEl.innerHTML += `
+        <div class="card" style="padding:12px;">
+          <strong>${d.fullName}</strong><br>
+          📞 ${d.phone}<br>
+          📍 ${d.city}<br>
+          <span class="badge ${d.isActive ? 'admin' : 'staff'}">
+            ${d.isActive ? 'Aktif' : 'Tidak Aktif'}
+          </span>
+        </div>
+      `;
+    });
+  }
+
+  document.getElementById("saveBtn").addEventListener("click", async () => {
+
+    const fullName = document.getElementById("fullName").value;
+    const phone = document.getElementById("phone").value;
+    const address = document.getElementById("address").value;
+    const city = document.getElementById("city").value;
+    const registerDate = document.getElementById("registerDate").value;
+    const email = document.getElementById("email").value;
+    const birthDate = document.getElementById("birthDate").value;
+    const gender = document.getElementById("gender").value;
+    const job = document.getElementById("job").value;
+    const note = document.getElementById("note").value;
+    const isActive = document.getElementById("isActive").value === "true";
+
+    if (!fullName || !phone) {
+      alert("Nama dan No HP wajib diisi");
+      return;
+    }
+
+    await addDoc(collection(db, "customers"), {
+      fullName,
+      phone,
+      address,
+      city,
+      registerDate,
+      email,
+      birthDate,
+      gender,
+      job,
+      note,
+      isActive,
+      createdAt: new Date()
+    });
+
+    document.querySelectorAll("input, textarea, select").forEach(el => {
+      if (el.type !== "button") el.value = "";
+    });
+
+    loadCustomers();
+    alert("Konsumen berhasil ditambahkan");
+  });
+
+  loadCustomers();
+</script>
+
+</body>
+</html>
