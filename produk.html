@@ -7,21 +7,22 @@
   <link rel="stylesheet" href="global.css">
 
   <style>
-    .modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.4);
-      display: none;
-      align-items: center;
-      justify-content: center;
-    }
-    .modal.active { display: flex; }
-    .modal-box {
+    .search-result {
       background: #fff;
-      padding: 20px;
-      border-radius: 12px;
-      width: 90%;
-      max-width: 400px;
+      border-radius: 8px;
+      margin-top: 4px;
+      max-height: 150px;
+      overflow-y: auto;
+      box-shadow: 0 4px 10px rgba(0,0,0,.08);
+    }
+
+    .search-result div {
+      padding: 8px;
+      cursor: pointer;
+    }
+
+    .search-result div:hover {
+      background: #e0e7ff;
     }
   </style>
 </head>
@@ -30,44 +31,36 @@
 
 <div class="content">
 
+  <!-- FORM -->
   <div class="card">
     <h3>Tambah Produk</h3>
 
-    <input id="name" placeholder="Nama Produk">
+    <input id="productName" placeholder="Nama Produk">
 
-    <select id="category">
-      <option value="">Pilih Kategori</option>
+    <label>Sub Kategori</label>
+    <input type="text" id="subCategorySearch" placeholder="Cari sub kategori...">
+    <div id="subCategoryResult" class="search-result"></div>
+
+    <select id="unit">
+      <option value="">Pilih Satuan</option>
+      <option value="m2">m2</option>
+      <option value="Unit">Unit</option>
+      <option value="Ls">Ls</option>
     </select>
-
-    <div style="display:flex; gap:6px;">
-      <select id="unit" style="flex:1;">
-        <option value="">Pilih Satuan</option>
-      </select>
-      <button type="button" onclick="openModal()">+</button>
-    </div>
 
     <input type="number" id="price" placeholder="Harga Satuan">
 
-    <textarea id="description" placeholder="Keterangan"></textarea>
+    <textarea id="note" placeholder="Keterangan"></textarea>
 
     <button id="saveBtn">Simpan Produk</button>
   </div>
 
+  <!-- LIST -->
   <div class="card">
     <h3>Daftar Produk</h3>
     <div id="list"></div>
   </div>
 
-</div>
-
-<!-- Modal tambah satuan -->
-<div class="modal" id="unitModal">
-  <div class="modal-box">
-    <h3>Tambah Satuan</h3>
-    <input id="newUnit" placeholder="Nama satuan">
-    <button onclick="saveUnit()">Simpan</button>
-    <button onclick="closeModal()" style="background:#dc2626;margin-top:8px;">Batal</button>
-  </div>
 </div>
 
 <script type="module" src="./auth-guard.js"></script>
@@ -86,111 +79,121 @@
   loadLayout("Produk");
 
   const db = getFirestore();
-  const categorySelect = document.getElementById("category");
-  const unitSelect = document.getElementById("unit");
+
+  const searchInput = document.getElementById("subCategorySearch");
+  const resultBox = document.getElementById("subCategoryResult");
   const listEl = document.getElementById("list");
 
-  async function loadCategories() {
-    const snap = await getDocs(collection(db, "categories"));
-    categorySelect.innerHTML = `<option value="">Pilih Kategori</option>`;
-    snap.forEach(doc => {
-      const d = doc.data();
-      categorySelect.innerHTML += `
-        <option value="${doc.id}" data-name="${d.name}">
-          ${d.name}
-        </option>
-      `;
-    });
-  }
+  let subCategories = [];
+  let selectedSubCategory = null;
 
-  async function loadUnits() {
-    const snap = await getDocs(collection(db, "units"));
-    unitSelect.innerHTML = `<option value="">Pilih Satuan</option>`;
-    snap.forEach(doc => {
-      const d = doc.data();
-      unitSelect.innerHTML += `
-        <option value="${d.name}">
-          ${d.name}
-        </option>
-      `;
-    });
-  }
+  // LOAD SUB KATEGORI
+  async function loadSubCategories() {
+    const q = query(
+      collection(db, "sub_categories"),
+      orderBy("createdAt", "desc")
+    );
 
-  async function loadProducts() {
-    listEl.innerHTML = "";
-    const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
     const snap = await getDocs(q);
 
+    subCategories = [];
+
     snap.forEach(doc => {
       const d = doc.data();
-      listEl.innerHTML += `
-        <div class="card" style="padding:12px;">
-          <strong>${d.name}</strong><br>
-          📂 ${d.categoryName}<br>
-          📦 ${d.unit}<br>
-          💰 Rp ${Number(d.price).toLocaleString()}<br>
-          📝 ${d.description || "-"}
-        </div>
-      `;
+      subCategories.push({
+        id: doc.id,
+        name: d.name,
+        categoryName: d.categoryName,
+        type: d.type
+      });
     });
   }
 
+  // SEARCH AUTOCOMPLETE
+  searchInput.addEventListener("input", () => {
+    const keyword = searchInput.value.toLowerCase();
+    resultBox.innerHTML = "";
+
+    if (!keyword) return;
+
+    subCategories
+      .filter(s => s.name.toLowerCase().includes(keyword))
+      .slice(0,10)
+      .forEach(s => {
+
+        const div = document.createElement("div");
+
+        div.innerHTML = `
+          <strong>${s.name}</strong><br>
+          <small>${s.type} → ${s.categoryName}</small>
+        `;
+
+        div.onclick = () => {
+          selectedSubCategory = s;
+          searchInput.value = s.name;
+          resultBox.innerHTML = "";
+        };
+
+        resultBox.appendChild(div);
+      });
+  });
+
+  // SIMPAN PRODUK
   document.getElementById("saveBtn").addEventListener("click", async () => {
 
-    const name = document.getElementById("name").value;
-    const categoryOption = categorySelect.options[categorySelect.selectedIndex];
-    const categoryId = categorySelect.value;
-    const categoryName = categoryOption.getAttribute("data-name");
-    const unit = unitSelect.value;
-    const price = document.getElementById("price").value;
-    const description = document.getElementById("description").value;
+    const name = document.getElementById("productName").value;
+    const unit = document.getElementById("unit").value;
+    const price = Number(document.getElementById("price").value);
+    const note = document.getElementById("note").value;
 
-    if (!name || !categoryId || !unit || !price) {
-      alert("Nama, kategori, satuan, dan harga wajib diisi");
+    if (!name || !selectedSubCategory || !unit) {
+      alert("Lengkapi semua data");
       return;
     }
 
     await addDoc(collection(db, "products"), {
       name,
-      categoryId,
-      categoryName,
+      subCategoryId: selectedSubCategory.id,
+      subCategoryName: selectedSubCategory.name,
+      categoryName: selectedSubCategory.categoryName,
+      type: selectedSubCategory.type,
       unit,
-      price: Number(price),
-      description,
+      price,
+      note,
       createdAt: new Date()
     });
 
-    document.querySelectorAll("input, textarea").forEach(el => el.value = "");
-    categorySelect.value = "";
-    unitSelect.value = "";
-
-    loadProducts();
-    alert("Produk berhasil ditambahkan");
+    alert("Produk berhasil disimpan");
+    location.reload();
   });
 
-  window.openModal = function() {
-    document.getElementById("unitModal").classList.add("active");
-  };
+  // LOAD PRODUK
+  async function loadProducts() {
+    listEl.innerHTML = "";
 
-  window.closeModal = function() {
-    document.getElementById("unitModal").classList.remove("active");
-  };
+    const q = query(
+      collection(db, "products"),
+      orderBy("createdAt", "desc")
+    );
 
-  window.saveUnit = async function() {
-    const newUnit = document.getElementById("newUnit").value;
-    if (!newUnit) return alert("Isi nama satuan");
+    const snap = await getDocs(q);
 
-    await addDoc(collection(db, "units"), {
-      name: newUnit
+    snap.forEach(doc => {
+      const d = doc.data();
+
+      listEl.innerHTML += `
+        <div class="card" style="padding:12px;">
+          <strong>${d.name}</strong><br>
+          ${d.type} → ${d.categoryName} → ${d.subCategoryName}<br>
+          ${d.unit}<br>
+          💰 Rp ${Number(d.price || 0).toLocaleString()}<br>
+          📝 ${d.note || "-"}
+        </div>
+      `;
     });
+  }
 
-    document.getElementById("newUnit").value = "";
-    closeModal();
-    loadUnits();
-  };
-
-  loadCategories();
-  loadUnits();
+  loadSubCategories();
   loadProducts();
 </script>
 
