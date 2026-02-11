@@ -256,26 +256,27 @@
   const productResult = document.getElementById("productResult");
 
   supplierSearch.addEventListener("input", () => {
-    const keyword = supplierSearch.value.toLowerCase();
-    supplierResult.innerHTML = "";
-    suppliers.filter(s => s.name.toLowerCase().includes(keyword))
-      .slice(0,10)
-      .forEach(s => {
-        const div = document.createElement("div");
-        div.textContent = s.name;
-        div.onclick = () => {
-  selectedProduct = p;
-  productSearch.value = p.name;
-  productResult.innerHTML = "";
+  const keyword = supplierSearch.value.toLowerCase();
+  supplierResult.innerHTML = "";
 
-  // Auto isi harga
-  priceInput.value = p.price || 0;
-  calculateTotal();
-};
+  suppliers
+    .filter(s => s.name.toLowerCase().includes(keyword))
+    .slice(0,10)
+    .forEach(s => {
 
-        supplierResult.appendChild(div);
-      });
-  });
+      const div = document.createElement("div");
+      div.textContent = s.name;
+
+      div.onclick = () => {
+        selectedSupplier = s;
+        supplierSearch.value = s.name;
+        supplierResult.innerHTML = "";
+      };
+
+      supplierResult.appendChild(div);
+    });
+});
+
 
   productSearch.addEventListener("input", () => {
     const keyword = productSearch.value.toLowerCase();
@@ -286,10 +287,15 @@
         const div = document.createElement("div");
         div.textContent = p.name;
         div.onclick = () => {
-          selectedProduct = p;
-          productSearch.value = p.name;
-          productResult.innerHTML = "";
-        };
+  selectedProduct = p;
+  productSearch.value = p.name;
+  productResult.innerHTML = "";
+
+  // AUTO ISI HARGA
+  priceInput.value = p.price || 0;
+  calculateTotal();
+};
+
         productResult.appendChild(div);
       });
   });
