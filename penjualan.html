@@ -15,12 +15,10 @@
       overflow-y: auto;
       box-shadow: 0 4px 10px rgba(0,0,0,.08);
     }
-
     .search-result div {
       padding: 8px;
       cursor: pointer;
     }
-
     .search-result div:hover {
       background: #e0e7ff;
     }
@@ -34,6 +32,11 @@
   <div class="card">
     <h3>Input Penjualan</h3>
 
+    <label>Tanggal Penjualan</label>
+    <input type="date" id="date">
+
+    <input id="invoice" placeholder="No Invoice" readonly>
+
     <label>Konsumen</label>
     <input type="text" id="customerSearch" placeholder="Cari konsumen...">
     <div id="customerResult" class="search-result"></div>
@@ -43,21 +46,30 @@
     <div id="productResult" class="search-result"></div>
 
     <input type="number" id="qty" placeholder="Qty">
-
     <input type="number" id="price" placeholder="Harga Satuan">
-
     <input type="number" id="total" placeholder="Total" readonly>
+
+    <input type="number" id="dp" placeholder="DP (jika ada)">
+    <input type="number" id="remaining" placeholder="Sisa Bayar" readonly>
 
     <select id="paymentMethod">
       <option value="">Cara Bayar</option>
     </select>
 
-    <input type="date" id="date">
-<textarea id="note" placeholder="Keterangan"></textarea>
+    <textarea id="note" placeholder="Keterangan"></textarea>
 
     <button id="saveBtn">Simpan Penjualan</button>
   </div>
 
+  <!-- FILTER -->
+  <div class="card">
+    <h3>Filter Tanggal</h3>
+    <input type="date" id="filterStart">
+    <input type="date" id="filterEnd">
+    <button onclick="filterSales()">Filter</button>
+  </div>
+
+  <!-- LIST -->
   <div class="card">
     <h3>Daftar Penjualan</h3>
     <div id="list"></div>
@@ -82,23 +94,46 @@
 
   const db = getFirestore();
 
-  const customerSearch = document.getElementById("customerSearch");
-  const customerResult = document.getElementById("customerResult");
-
-  const productSearch = document.getElementById("productSearch");
-  const productResult = document.getElementById("productResult");
-
+  const dateInput = document.getElementById("date");
+  const invoiceInput = document.getElementById("invoice");
   const qtyInput = document.getElementById("qty");
   const priceInput = document.getElementById("price");
   const totalInput = document.getElementById("total");
-  const paymentSelect = document.getElementById("paymentMethod");
+  const dpInput = document.getElementById("dp");
+  const remainingInput = document.getElementById("remaining");
   const listEl = document.getElementById("list");
-  const note = document.getElementById("note").value;
+  const paymentSelect = document.getElementById("paymentMethod");
 
   let customers = [];
   let products = [];
   let selectedCustomer = null;
   let selectedProduct = null;
+
+  // DEFAULT TANGGAL
+  const today = new Date().toISOString().split("T")[0];
+  dateInput.value = today;
+
+  // GENERATE INVOICE
+  function generateInvoice() {
+    const timestamp = Date.now().toString().slice(-6);
+    invoiceInput.value = "INV-" + timestamp;
+  }
+  generateInvoice();
+
+  // HITUNG TOTAL
+  function calculateTotal() {
+    const qty = Number(qtyInput.value) || 0;
+    const price = Number(priceInput.value) || 0;
+    const total = qty * price;
+    totalInput.value = total;
+
+    const dp = Number(dpInput.value) || 0;
+    remainingInput.value = total - dp;
+  }
+
+  qtyInput.addEventListener("input", calculateTotal);
+  priceInput.addEventListener("input", calculateTotal);
+  dpInput.addEventListener("input", calculateTotal);
 
   // LOAD DATA
   async function loadCustomers() {
@@ -126,128 +161,74 @@
     const snap = await getDocs(collection(db, "payment_methods"));
     snap.forEach(doc => {
       const d = doc.data();
-      paymentSelect.innerHTML += `
-        <option value="${d.name}">
-          ${d.name}
-        </option>
-      `;
+      paymentSelect.innerHTML += `<option value="${d.name}">${d.name}</option>`;
     });
   }
 
-  async function loadSales() {
+  async function loadSales(filterStart = null, filterEnd = null) {
     listEl.innerHTML = "";
+
     const q = query(collection(db, "sales"), orderBy("createdAt", "desc"));
     const snap = await getDocs(q);
 
     snap.forEach(doc => {
       const d = doc.data();
 
-     listEl.innerHTML += `
-  <div class="card" style="padding:12px;">
-    <strong>${d.productName}</strong><br>
-    ${d.customerName}<br>
-    ${d.qty} ${d.unit}<br>
-    💰 Rp ${Number(d.total).toLocaleString()}<br>
-    📝 ${d.note || "-"}
-  </div>
-`;
+      if (filterStart && filterEnd) {
+        if (d.date < filterStart || d.date > filterEnd) return;
+      }
 
+      listEl.innerHTML += `
+        <div class="card" style="padding:12px;">
+          <strong>${d.invoice}</strong><br>
+          ${d.productName} - ${d.customerName}<br>
+          📅 ${d.date}<br>
+          💰 Rp ${Number(d.total).toLocaleString()}<br>
+          💳 DP: Rp ${Number(d.dp || 0).toLocaleString()}<br>
+          🧾 Sisa: Rp ${Number(d.remaining || 0).toLocaleString()}
+        </div>
+      `;
     });
   }
 
-  // SEARCH CUSTOMER
-  customerSearch.addEventListener("input", () => {
-    const keyword = customerSearch.value.toLowerCase();
-    customerResult.innerHTML = "";
-
-    customers
-      .filter(c => c.name.toLowerCase().includes(keyword))
-      .slice(0, 10)
-      .forEach(c => {
-        const div = document.createElement("div");
-        div.textContent = c.name;
-        div.onclick = () => {
-          selectedCustomer = c;
-          customerSearch.value = c.name;
-          customerResult.innerHTML = "";
-        };
-        customerResult.appendChild(div);
-      });
-  });
-
-  // SEARCH PRODUCT
-  productSearch.addEventListener("input", () => {
-    const keyword = productSearch.value.toLowerCase();
-    productResult.innerHTML = "";
-
-    products
-      .filter(p => p.name.toLowerCase().includes(keyword))
-      .slice(0, 10)
-      .forEach(p => {
-        const div = document.createElement("div");
-        div.textContent = p.name;
-        div.onclick = () => {
-          selectedProduct = p;
-          productSearch.value = p.name;
-          productResult.innerHTML = "";
-          priceInput.value = p.price;
-          calculateTotal();
-        };
-        productResult.appendChild(div);
-      });
-  });
-
-  // HITUNG TOTAL
-  function calculateTotal() {
-    const qty = Number(qtyInput.value) || 0;
-    const price = Number(priceInput.value) || 0;
-    totalInput.value = qty * price;
+  window.filterSales = function() {
+    const start = document.getElementById("filterStart").value;
+    const end = document.getElementById("filterEnd").value;
+    loadSales(start, end);
   }
-
-  qtyInput.addEventListener("input", calculateTotal);
-  priceInput.addEventListener("input", calculateTotal);
 
   // SIMPAN
   document.getElementById("saveBtn").addEventListener("click", async () => {
 
-    const customerId = selectedCustomer?.id;
-    const customerName = selectedCustomer?.name;
-
-    const productId = selectedProduct?.id;
-    const productName = selectedProduct?.name;
-    const unit = selectedProduct?.unit;
-
-    const qty = Number(qtyInput.value);
-    const price = Number(priceInput.value);
-    const total = Number(totalInput.value);
-    const paymentMethod = paymentSelect.value;
-    const date = document.getElementById("date").value;
-
-    if (!customerId || !productId || !qty || !paymentMethod) {
-      alert("Lengkapi semua data");
+    if (!selectedCustomer || !selectedProduct) {
+      alert("Pilih konsumen dan produk");
       return;
     }
 
-    await addDoc(collection(db, "sales"), {
-      customerId,
-      customerName,
-      productId,
-      productName,
-      qty,
-      unit,
-      price,
-      total,
-      paymentMethod,
-      date,
-      note,
+    const data = {
+      invoice: invoiceInput.value,
+      date: dateInput.value,
+      customerId: selectedCustomer.id,
+      customerName: selectedCustomer.name,
+      productId: selectedProduct.id,
+      productName: selectedProduct.name,
+      qty: Number(qtyInput.value),
+      unit: selectedProduct.unit,
+      price: Number(priceInput.value),
+      total: Number(totalInput.value),
+      dp: Number(dpInput.value) || 0,
+      remaining: Number(remainingInput.value),
+      paymentMethod: paymentSelect.value,
+      note: document.getElementById("note").value,
       createdAt: new Date()
-    });
+    };
+
+    await addDoc(collection(db, "sales"), data);
 
     alert("Penjualan berhasil disimpan");
     location.reload();
   });
 
-  // INIT
   loadCustomers();
   loadProducts();
   loadPayments();
