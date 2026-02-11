@@ -14,8 +14,10 @@ export function loadLayout(titleText = "Dashboard") {
       <h2>Graha Berlian</h2>
       <div class="menu">
         <a href="dashboard.html">🏠 Home</a>
-        <a href="transaksi.html">💰 Transaksi</a>
-        <a href="kategori.html">📂 Kategori</a>
+        <a href="pembelian.html">💰 Pembelian</a>
+        <a href="penjualan.html">💰 Penjualan</a>
+        <a href="Produk.html">💰 Produk</a>
+        <a href="kategori.html">📂 Kategori</a
         <a href="konsumen.html">👤 Konsumen</a>
         <a href="suplier.html">🏭 Supplier</a>
         <a href="laporan.html">📊 Laporan</a>
