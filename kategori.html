@@ -13,7 +13,7 @@
 
   <!-- FORM -->
   <div class="card">
-    <h3>Tambah Kategori</h3>
+    <h3>Tambah Sub Kategori</h3>
 
     <select id="type">
       <option value="">Pilih Jenis</option>
@@ -21,23 +21,29 @@
       <option value="Pengeluaran">Pengeluaran</option>
     </select>
 
-    <input id="name" placeholder="Isi Kategori">
+    <div style="display:flex; gap:6px;">
+      <select id="category" style="flex:1;">
+        <option value="">Pilih Kategori</option>
+      </select>
+      <button type="button" onclick="addCategory()">+</button>
+    </div>
 
-    <button id="saveBtn">Simpan Kategori</button>
+    <input id="subName" placeholder="Sub Kategori">
+    <textarea id="note" placeholder="Keterangan"></textarea>
+
+    <button id="saveBtn">Simpan</button>
   </div>
 
   <!-- LIST -->
   <div class="card">
-    <h3>Daftar Kategori</h3>
+    <h3>Daftar Sub Kategori</h3>
     <div id="list"></div>
   </div>
 
 </div>
 
-<!-- AUTH GUARD -->
 <script type="module" src="./auth-guard.js"></script>
 
-<!-- LOGIC -->
 <script type="module">
   import { loadLayout } from "./layout.js";
   import {
@@ -46,61 +52,117 @@
     addDoc,
     getDocs,
     query,
+    where,
     orderBy
   } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   loadLayout("Kategori");
 
   const db = getFirestore();
+
+  const typeSelect = document.getElementById("type");
+  const categorySelect = document.getElementById("category");
   const listEl = document.getElementById("list");
 
-  async function loadCategories() {
+  // Load kategori berdasarkan jenis
+  async function loadCategories(type) {
+    categorySelect.innerHTML = `<option value="">Pilih Kategori</option>`;
+
+    if (!type) return;
+
+    const q = query(
+      collection(db, "categories"),
+      where("type", "==", type)
+    );
+
+    const snap = await getDocs(q);
+
+    snap.forEach(doc => {
+      const d = doc.data();
+      categorySelect.innerHTML += `
+        <option value="${doc.id}" data-name="${d.name}">
+          ${d.name}
+        </option>
+      `;
+    });
+  }
+
+  typeSelect.addEventListener("change", () => {
+    loadCategories(typeSelect.value);
+  });
+
+  // Tambah kategori utama
+  window.addCategory = async function() {
+    const name = prompt("Nama Kategori Baru?");
+    if (!name || !typeSelect.value) {
+      alert("Pilih jenis dulu");
+      return;
+    }
+
+    await addDoc(collection(db, "categories"), {
+      type: typeSelect.value,
+      name,
+      createdAt: new Date()
+    });
+
+    loadCategories(typeSelect.value);
+  }
+
+  // Simpan sub kategori
+  document.getElementById("saveBtn").addEventListener("click", async () => {
+
+    const type = typeSelect.value;
+    const categoryOption = categorySelect.options[categorySelect.selectedIndex];
+    const categoryId = categorySelect.value;
+    const categoryName = categoryOption.getAttribute("data-name");
+    const subName = document.getElementById("subName").value;
+    const note = document.getElementById("note").value;
+
+    if (!type || !categoryId || !subName) {
+      alert("Lengkapi semua data");
+      return;
+    }
+
+    await addDoc(collection(db, "sub_categories"), {
+      type,
+      categoryId,
+      categoryName,
+      name: subName,
+      note,
+      createdAt: new Date()
+    });
+
+    document.getElementById("subName").value = "";
+    document.getElementById("note").value = "";
+
+    loadSubCategories();
+    alert("Sub kategori berhasil ditambahkan");
+  });
+
+  async function loadSubCategories() {
     listEl.innerHTML = "";
 
-    const q = query(collection(db, "categories"), orderBy("createdAt", "desc"));
+    const q = query(
+      collection(db, "sub_categories"),
+      orderBy("createdAt", "desc")
+    );
+
     const snap = await getDocs(q);
 
     snap.forEach(doc => {
       const d = doc.data();
 
-      const badgeColor =
-        d.type === "Pemasukan" ? "admin" : "staff";
-
       listEl.innerHTML += `
         <div class="card" style="padding:12px;">
           <strong>${d.name}</strong><br>
-          <span class="badge ${badgeColor}">
-            ${d.type}
-          </span>
+          ${d.type} → ${d.categoryName}<br>
+          📝 ${d.note || "-"}
         </div>
       `;
     });
   }
 
-  document.getElementById("saveBtn").addEventListener("click", async () => {
-
-    const type = document.getElementById("type").value;
-    const name = document.getElementById("name").value;
-
-    if (!type || !name) {
-      alert("Jenis dan kategori wajib diisi");
-      return;
-    }
-
-    await addDoc(collection(db, "categories"), {
-      type,
-      name,
-      createdAt: new Date()
-    });
-
-    document.getElementById("type").value = "";
-    document.getElementById("name").value = "";
-
-    loadCategories();
-    alert("Kategori berhasil ditambahkan");
-  });
-
-  loadCategories();
+  loadSubCategories();
 </script>
 
 </body>
