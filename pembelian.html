@@ -5,6 +5,24 @@
 <title>Pembelian | Graha Berlian</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="global.css">
+
+<style>
+.search-result {
+  background: #fff;
+  border-radius: 8px;
+  margin-top: 4px;
+  max-height: 150px;
+  overflow-y: auto;
+  box-shadow: 0 4px 10px rgba(0,0,0,.08);
+}
+.search-result div {
+  padding: 8px;
+  cursor: pointer;
+}
+.search-result div:hover {
+  background: #e0e7ff;
+}
+</style>
 </head>
 
 <body>
@@ -31,14 +49,6 @@
     <input type="number" id="price" placeholder="Harga Satuan">
     <input type="number" id="total" placeholder="Total" readonly>
 
-    <input type="number" id="dp" placeholder="Jumlah Dibayar (DP)">
-    <input type="number" id="remaining" placeholder="Sisa Bayar" readonly>
-
-    <label>Akun Bayar</label>
-    <select id="accountSelect">
-      <option value="">Pilih Akun</option>
-    </select>
-
     <textarea id="note" placeholder="Keterangan"></textarea>
 
     <button id="saveBtn">Simpan</button>
@@ -60,8 +70,6 @@ import {
   collection,
   addDoc,
   getDocs,
-  doc,
-  updateDoc,
   query,
   orderBy
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -73,117 +81,193 @@ const db = getFirestore();
 const qtyInput = document.getElementById("qty");
 const priceInput = document.getElementById("price");
 const totalInput = document.getElementById("total");
-const dpInput = document.getElementById("dp");
-const remainingInput = document.getElementById("remaining");
-const accountSelect = document.getElementById("accountSelect");
 
+let suppliers = [];
+let products = [];
 let selectedSupplier = null;
 let selectedProduct = null;
-let accounts = [];
+
+// ====================
+// DEFAULT TANGGAL
+// ====================
+document.getElementById("date").value =
+  new Date().toISOString().split("T")[0];
+
+// ====================
+// GENERATE INVOICE
+// ====================
+function generateInvoice(){
+  const time = Date.now().toString().slice(-6);
+  document.getElementById("invoice").value = "PO-" + time;
+}
+generateInvoice();
 
 // ====================
 // HITUNG TOTAL
 // ====================
-function calculateTotal() {
+function calculateTotal(){
   const qty = Number(qtyInput.value) || 0;
   const price = Number(priceInput.value) || 0;
-  const total = qty * price;
-  totalInput.value = total;
-
-  const dp = Number(dpInput.value) || 0;
-  remainingInput.value = total - dp;
+  totalInput.value = qty * price;
 }
-
 qtyInput.addEventListener("input", calculateTotal);
 priceInput.addEventListener("input", calculateTotal);
-dpInput.addEventListener("input", calculateTotal);
 
 // ====================
-// LOAD ACCOUNTS
+// LOAD SUPPLIERS
 // ====================
-async function loadAccounts(){
-  const snap = await getDocs(collection(db, "accounts"));
-  accounts = [];
+async function loadSuppliers(){
+  const snap = await getDocs(collection(db, "suppliers"));
+  suppliers = [];
 
-  accountSelect.innerHTML = `<option value="">Pilih Akun</option>`;
-
-  snap.forEach(docSnap=>{
-    const d = docSnap.data();
-    accounts.push({
-      id: docSnap.id,
-      name: d.name,
-      balance: d.balance || 0
+  snap.forEach(doc=>{
+    suppliers.push({
+      id: doc.id,
+      name: doc.data().companyName || doc.data().name
     });
-
-    accountSelect.innerHTML += `
-      <option value="${docSnap.id}">
-        ${d.name} (Rp ${Number(d.balance).toLocaleString("id-ID")})
-      </option>
-    `;
   });
 }
 
+// SEARCH SUPPLIER
+const supplierSearch = document.getElementById("supplierSearch");
+const supplierResult = document.getElementById("supplierResult");
+
+supplierSearch.addEventListener("input", ()=>{
+  const keyword = supplierSearch.value.toLowerCase();
+  supplierResult.innerHTML = "";
+
+  suppliers
+    .filter(s => s.name.toLowerCase().includes(keyword))
+    .slice(0,10)
+    .forEach(s=>{
+      const div = document.createElement("div");
+      div.textContent = s.name;
+      div.onclick = ()=>{
+        selectedSupplier = s;
+        supplierSearch.value = s.name;
+        supplierResult.innerHTML = "";
+      };
+      supplierResult.appendChild(div);
+    });
+});
+
 // ====================
-// UPDATE SALDO AKUN
+// LOAD PRODUCTS
 // ====================
-async function reduceAccountBalance(accountId, amount){
+async function loadProducts(){
+  const snap = await getDocs(collection(db, "products"));
+  products = [];
 
-  const account = accounts.find(a => a.id === accountId);
-  if(!account) return;
-
-  const newBalance = account.balance - amount;
-
-  await updateDoc(doc(db, "accounts", accountId), {
-    balance: newBalance
+  snap.forEach(doc=>{
+    const d = doc.data();
+    products.push({
+      id: doc.id,
+      name: d.name,
+      price: d.price || 0
+    });
   });
 }
 
+// SEARCH PRODUCT
+const productSearch = document.getElementById("productSearch");
+const productResult = document.getElementById("productResult");
+
+productSearch.addEventListener("input", ()=>{
+  const keyword = productSearch.value.toLowerCase();
+  productResult.innerHTML = "";
+
+  products
+    .filter(p => p.name.toLowerCase().includes(keyword))
+    .slice(0,10)
+    .forEach(p=>{
+      const div = document.createElement("div");
+      div.textContent = p.name;
+
+      div.onclick = ()=>{
+        selectedProduct = p;
+        productSearch.value = p.name;
+        priceInput.value = p.price;
+        calculateTotal();
+        productResult.innerHTML = "";
+      };
+
+      productResult.appendChild(div);
+    });
+});
+
 // ====================
-// SIMPAN PEMBELIAN
+// SIMPAN
 // ====================
 document.getElementById("saveBtn").addEventListener("click", async ()=>{
 
-  const dp = Number(dpInput.value) || 0;
-  const accountId = accountSelect.value;
-
-  if(dp > 0 && !accountId){
-    alert("Pilih akun bayar");
+  if(!selectedSupplier || !selectedProduct){
+    alert("Pilih supplier dan produk");
     return;
   }
 
   await addDoc(collection(db, "purchases"), {
+    invoice: document.getElementById("invoice").value,
     date: document.getElementById("date").value,
-    supplierName: selectedSupplier?.name || "",
-    productName: selectedProduct?.name || "",
+    supplierId: selectedSupplier.id,
+    supplierName: selectedSupplier.name,
+    productId: selectedProduct.id,
+    productName: selectedProduct.name,
     qty: Number(qtyInput.value),
     price: Number(priceInput.value),
     total: Number(totalInput.value),
-    dp,
-    remaining: Number(remainingInput.value),
     note: document.getElementById("note").value,
     createdAt: new Date()
   });
 
-  // Kurangi saldo akun jika ada pembayaran
-  if(dp > 0){
-    await reduceAccountBalance(accountId, dp);
-  }
-
   alert("Pembelian berhasil disimpan");
 
-  // Reset form
+  // reset form
+  supplierSearch.value = "";
+  productSearch.value = "";
   qtyInput.value = "";
   priceInput.value = "";
   totalInput.value = "";
-  dpInput.value = "";
-  remainingInput.value = "";
-  accountSelect.value = "";
   document.getElementById("note").value = "";
+  selectedSupplier = null;
+  selectedProduct = null;
 
-  loadAccounts();
+  generateInvoice();
+  loadPurchases();
 });
 
-loadAccounts();
+// ====================
+// LOAD LIST
+// ====================
+async function loadPurchases(){
+
+  const listEl = document.getElementById("list");
+  listEl.innerHTML = "";
+
+  const q = query(
+    collection(db, "purchases"),
+    orderBy("createdAt","desc")
+  );
+
+  const snap = await getDocs(q);
+
+  snap.forEach(doc=>{
+    const d = doc.data();
+
+    listEl.innerHTML += `
+      <div class="card" style="padding:12px;">
+        <strong>${d.invoice}</strong><br>
+        ${d.productName} - ${d.supplierName}<br>
+        📅 ${d.date}<br>
+        💰 Rp ${Number(d.total).toLocaleString("id-ID")}
+      </div>
+    `;
+  });
+}
+
+loadSuppliers();
+loadProducts();
+loadPurchases();
+
 </script>
 
 </body>
