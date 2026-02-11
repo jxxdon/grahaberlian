@@ -206,18 +206,22 @@ document.getElementById("saveBtn").addEventListener("click", async ()=>{
   }
 
   await addDoc(collection(db, "purchases"), {
-    invoice: document.getElementById("invoice").value,
-    date: document.getElementById("date").value,
-    supplierId: selectedSupplier.id,
-    supplierName: selectedSupplier.name,
-    productId: selectedProduct.id,
-    productName: selectedProduct.name,
-    qty: Number(qtyInput.value),
-    price: Number(priceInput.value),
-    total: Number(totalInput.value),
-    note: document.getElementById("note").value,
-    createdAt: new Date()
-  });
+  invoice: document.getElementById("invoice").value,
+  date: document.getElementById("date").value,
+  supplierId: selectedSupplier.id,
+  supplierName: selectedSupplier.name,
+  productId: selectedProduct.id,
+  productName: selectedProduct.name,
+  qty: Number(qtyInput.value),
+  price: Number(priceInput.value),
+  total: Number(totalInput.value),
+  paid: 0,
+  remaining: Number(totalInput.value),
+  status: "Belum Lunas",
+  note: document.getElementById("note").value,
+  createdAt: new Date()
+});
+
 
   alert("Pembelian berhasil disimpan");
 
@@ -251,24 +255,93 @@ async function loadPurchases(){
   const snap = await getDocs(q);
 
   snap.forEach(doc=>{
-    const d = doc.data();
+  const d = doc.data();
 
-    listEl.innerHTML += `
-      <div class="card" style="padding:12px;">
-        <strong>${d.invoice}</strong><br>
-        ${d.productName} - ${d.supplierName}<br>
-        📅 ${d.date}<br>
-        💰 Rp ${Number(d.total).toLocaleString("id-ID")}
-      </div>
-    `;
-  });
+  listEl.innerHTML += `
+    <div class="card" style="padding:12px;">
+      <strong>${d.invoice}</strong><br>
+      ${d.productName} - ${d.supplierName}<br>
+      📅 ${d.date}<br>
+      💰 Total: Rp ${Number(d.total).toLocaleString("id-ID")}<br>
+      💳 Dibayar: Rp ${Number(d.paid || 0).toLocaleString("id-ID")}<br>
+      🧾 Sisa: Rp ${Number(d.remaining || 0).toLocaleString("id-ID")}<br>
+      Status: ${d.status}<br>
+      ${
+        d.remaining > 0
+        ? `<button onclick="openPaymentModal('${doc.id}', ${d.remaining})">Catat Pembayaran</button>`
+        : ""
+      }
+    </div>
+  `;
+});
 }
 
+import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+let currentPurchaseId = null;
+
+window.openPaymentModal = async function(id, remaining){
+  currentPurchaseId = id;
+
+  document.getElementById("payAmount").value = remaining;
+
+  // load akun
+  const snap = await getDocs(collection(db, "accounts"));
+  const select = document.getElementById("payAccount");
+  select.innerHTML = "";
+
+  snap.forEach(docSnap=>{
+    const d = docSnap.data();
+    select.innerHTML += `
+      <option value="${docSnap.id}">
+        ${d.name} (Rp ${Number(d.balance).toLocaleString("id-ID")})
+      </option>
+    `;
+  });
+
+  document.getElementById("paymentModal").style.display = "flex";
+}
+
+window.closePaymentModal = function(){
+  document.getElementById("paymentModal").style.display = "none";
+}
+
+window.savePayment = async function(){
+
+  const amount = Number(document.getElementById("payAmount").value);
+  const accountId = document.getElementById("payAccount").value;
+
+  if(!amount || !accountId){
+    alert("Lengkapi data");
+    return;
+  }
+
+  const purchaseRef = doc(db, "purchases", currentPurchaseId);
+  const purchaseSnap = await getDocs(query(collection(db, "purchases")));
+
+  // ambil data purchase
+  const purchaseDoc = await (await fetch(
+    `https://firestore.googleapis.com/v1/projects/YOUR_PROJECT_ID/databases/(default)/documents/purchases/${currentPurchaseId}`
+  ));
+
+}
+
+  
 loadSuppliers();
 loadProducts();
 loadPurchases();
 
 </script>
+  
+<div id="paymentModal" class="modal">
+  <div class="modal-content">
+    <h3>Catat Pembayaran</h3>
+    <input type="number" id="payAmount" placeholder="Nominal Bayar">
+    <select id="payAccount"></select>
+    <button onclick="savePayment()">Simpan</button>
+    <button onclick="closePaymentModal()">Batal</button>
+  </div>
+</div>
 
 </body>
 </html>
