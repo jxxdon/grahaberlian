@@ -83,7 +83,7 @@ button{
 </head>
 
 <body>
-
+<div id="app"></div>
 <div class="card">
   <h3>Input Pembelian</h3>
 
@@ -147,7 +147,10 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-
+  
+import { loadLayout } from "./layout.js";
+loadLayout("Pembelian");
+  
 const firebaseConfig = {
   apiKey: "YOUR_KEY",
   authDomain: "YOUR_AUTH",
@@ -200,6 +203,14 @@ async function loadProducts(){
 
 // =================== SEARCH ===================
 
+// ================= SEARCH =================
+
+// ⬇️ TAMBAHKAN DI SINI
+const supplierSearch = document.getElementById("supplierSearch");
+const supplierResult = document.getElementById("supplierResult");
+const productSearch = document.getElementById("productSearch");
+const productResult = document.getElementById("productResult");
+  
 supplierSearch.addEventListener("input",()=>{
   supplierResult.innerHTML="";
   const keyword=supplierSearch.value.toLowerCase();
