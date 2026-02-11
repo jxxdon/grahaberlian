@@ -4,354 +4,117 @@
 <meta charset="UTF-8">
 <title>Pembelian | Graha Berlian</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="global.css">
 
 <style>
-.search-result {
-  background: #fff;
-  border-radius: 8px;
-  margin-top: 4px;
-  max-height: 150px;
-  overflow-y: auto;
-  box-shadow: 0 4px 10px rgba(0,0,0,.08);
-}
-.search-result div {
-  padding: 8px;
-  cursor: pointer;
-}
-.search-result div:hover {
-  background: #e0e7ff;
-}
-  .btn-mini {
-  background: #3b82f6;
-  color: white;
-  border: none;
-  padding: 6px 10px;
-  font-size: 13px;
-  border-radius: 6px;
-  cursor: pointer;
+body{
+  font-family: sans-serif;
+  background:#f3f4f6;
+  margin:0;
+  padding:16px;
 }
 
-.btn-mini:active {
-  transform: scale(0.96);
+.card{
+  background:white;
+  padding:16px;
+  border-radius:12px;
+  margin-bottom:16px;
+  box-shadow:0 4px 10px rgba(0,0,0,.05);
 }
 
+input, textarea{
+  width:100%;
+  padding:10px;
+  margin-bottom:10px;
+  border-radius:8px;
+  border:1px solid #ddd;
+}
+
+button{
+  background:#3b82f6;
+  color:white;
+  border:none;
+  padding:10px;
+  border-radius:8px;
+  width:100%;
+}
+
+.btn-mini{
+  background:#3b82f6;
+  padding:6px 10px;
+  font-size:13px;
+  border-radius:6px;
+  width:auto;
+}
+
+.search-result{
+  background:white;
+  max-height:150px;
+  overflow-y:auto;
+  border-radius:8px;
+  box-shadow:0 4px 10px rgba(0,0,0,.08);
+}
+
+.search-result div{
+  padding:8px;
+  cursor:pointer;
+}
+
+.search-result div:hover{
+  background:#e0e7ff;
+}
+
+.modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.4);
+  justify-content:center;
+  align-items:center;
+}
+
+.modal-box{
+  background:white;
+  width:90%;
+  max-width:380px;
+  border-radius:12px;
+  padding:16px;
+}
 </style>
 </head>
 
 <body>
 
-<div class="content">
+<div class="card">
+  <h3>Input Pembelian</h3>
 
-  <div class="card">
-    <h3>Input Pembelian</h3>
+  <label>Tanggal</label>
+  <input type="date" id="date">
 
-    <label>Tanggal</label>
-    <input type="date" id="date">
+  <input id="invoice" readonly>
 
-    <input id="invoice" placeholder="No Invoice" readonly>
+  <label>Supplier</label>
+  <input type="text" id="supplierSearch" placeholder="Cari supplier...">
+  <div id="supplierResult" class="search-result"></div>
 
-    <label>Supplier</label>
-    <input type="text" id="supplierSearch" placeholder="Cari supplier...">
-    <div id="supplierResult" class="search-result"></div>
+  <label>Produk</label>
+  <input type="text" id="productSearch" placeholder="Cari produk...">
+  <div id="productResult" class="search-result"></div>
 
-    <label>Produk</label>
-    <input type="text" id="productSearch" placeholder="Cari produk...">
-    <div id="productResult" class="search-result"></div>
+  <input type="number" id="qty" placeholder="Qty">
+  <input type="number" id="price" placeholder="Harga Satuan">
+  <input type="number" id="total" placeholder="Total" readonly>
 
-    <input type="number" id="qty" placeholder="Qty">
-    <input type="number" id="price" placeholder="Harga Satuan">
-    <input type="number" id="total" placeholder="Total" readonly>
+  <textarea id="note" placeholder="Keterangan"></textarea>
 
-    <textarea id="note" placeholder="Keterangan"></textarea>
-
-    <button id="saveBtn">Simpan</button>
-  </div>
-
-  <div class="card">
-    <h3>Daftar Pembelian</h3>
-    <div id="list"></div>
-  </div>
-
+  <button id="saveBtn">Simpan</button>
 </div>
 
-<script type="module" src="./auth-guard.js"></script>
+<div class="card">
+  <h3>Daftar Pembelian</h3>
+  <div id="list"></div>
+</div>
 
-<script type="module">
-import { loadLayout } from "./layout.js";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  orderBy
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-loadLayout("Pembelian");
-
-const db = getFirestore();
-
-const qtyInput = document.getElementById("qty");
-const priceInput = document.getElementById("price");
-const totalInput = document.getElementById("total");
-
-let suppliers = [];
-let products = [];
-let selectedSupplier = null;
-let selectedProduct = null;
-
-// ====================
-// DEFAULT TANGGAL
-// ====================
-document.getElementById("date").value =
-  new Date().toISOString().split("T")[0];
-
-// ====================
-// GENERATE INVOICE
-// ====================
-function generateInvoice(){
-  const time = Date.now().toString().slice(-6);
-  document.getElementById("invoice").value = "PO-" + time;
-}
-generateInvoice();
-
-// ====================
-// HITUNG TOTAL
-// ====================
-function calculateTotal(){
-  const qty = Number(qtyInput.value) || 0;
-  const price = Number(priceInput.value) || 0;
-  totalInput.value = qty * price;
-}
-qtyInput.addEventListener("input", calculateTotal);
-priceInput.addEventListener("input", calculateTotal);
-
-// ====================
-// LOAD SUPPLIERS
-// ====================
-async function loadSuppliers(){
-  const snap = await getDocs(collection(db, "suppliers"));
-  suppliers = [];
-
-  snap.forEach(doc=>{
-    suppliers.push({
-      id: doc.id,
-      name: doc.data().companyName || doc.data().name
-    });
-  });
-}
-
-// SEARCH SUPPLIER
-const supplierSearch = document.getElementById("supplierSearch");
-const supplierResult = document.getElementById("supplierResult");
-
-supplierSearch.addEventListener("input", ()=>{
-  const keyword = supplierSearch.value.toLowerCase();
-  supplierResult.innerHTML = "";
-
-  suppliers
-    .filter(s => s.name.toLowerCase().includes(keyword))
-    .slice(0,10)
-    .forEach(s=>{
-      const div = document.createElement("div");
-      div.textContent = s.name;
-      div.onclick = ()=>{
-        selectedSupplier = s;
-        supplierSearch.value = s.name;
-        supplierResult.innerHTML = "";
-      };
-      supplierResult.appendChild(div);
-    });
-});
-
-// ====================
-// LOAD PRODUCTS
-// ====================
-async function loadProducts(){
-  const snap = await getDocs(collection(db, "products"));
-  products = [];
-
-  snap.forEach(doc=>{
-    const d = doc.data();
-    products.push({
-      id: doc.id,
-      name: d.name,
-      price: d.price || 0
-    });
-  });
-}
-
-// SEARCH PRODUCT
-const productSearch = document.getElementById("productSearch");
-const productResult = document.getElementById("productResult");
-
-productSearch.addEventListener("input", ()=>{
-  const keyword = productSearch.value.toLowerCase();
-  productResult.innerHTML = "";
-
-  products
-    .filter(p => p.name.toLowerCase().includes(keyword))
-    .slice(0,10)
-    .forEach(p=>{
-      const div = document.createElement("div");
-      div.textContent = p.name;
-
-      div.onclick = ()=>{
-        selectedProduct = p;
-        productSearch.value = p.name;
-        priceInput.value = p.price;
-        calculateTotal();
-        productResult.innerHTML = "";
-      };
-
-      productResult.appendChild(div);
-    });
-});
-
-// ====================
-// SIMPAN
-// ====================
-document.getElementById("saveBtn").addEventListener("click", async ()=>{
-
-  if(!selectedSupplier || !selectedProduct){
-    alert("Pilih supplier dan produk");
-    return;
-  }
-
-  await addDoc(collection(db, "purchases"), {
-  invoice: document.getElementById("invoice").value,
-  date: document.getElementById("date").value,
-  supplierId: selectedSupplier.id,
-  supplierName: selectedSupplier.name,
-  productId: selectedProduct.id,
-  productName: selectedProduct.name,
-  qty: Number(qtyInput.value),
-  price: Number(priceInput.value),
-  total: Number(totalInput.value),
-  paid: 0,
-  remaining: Number(totalInput.value),
-  status: "Belum Lunas",
-  note: document.getElementById("note").value,
-  createdAt: new Date()
-});
-
-
-  alert("Pembelian berhasil disimpan");
-
-  // reset form
-  supplierSearch.value = "";
-  productSearch.value = "";
-  qtyInput.value = "";
-  priceInput.value = "";
-  totalInput.value = "";
-  document.getElementById("note").value = "";
-  selectedSupplier = null;
-  selectedProduct = null;
-
-  generateInvoice();
-  loadPurchases();
-});
-
-// ====================
-// LOAD LIST
-// ====================
-async function loadPurchases(){
-
-  const listEl = document.getElementById("list");
-  listEl.innerHTML = "";
-
-  const q = query(
-    collection(db, "purchases"),
-    orderBy("createdAt","desc")
-  );
-
-  const snap = await getDocs(q);
-
-  snap.forEach(doc=>{
-  const d = doc.data();
-
-  listEl.innerHTML += `
-    <div class="card" style="padding:14px; margin-bottom:12px;">
-      <strong>${d.invoice}</strong><br>
-      ${d.productName} - ${d.supplierName}<br>
-      📅 ${d.date}<br>
-      💰 Total: Rp ${Number(d.total).toLocaleString("id-ID")}<br>
-      💳 Dibayar: Rp ${Number(d.paid || 0).toLocaleString("id-ID")}<br>
-      🧾 Sisa: Rp ${Number(d.remaining || d.total).toLocaleString("id-ID")}<br>
-
-      <div style="margin-top:8px;">
-        ${
-          (d.remaining ?? d.total) > 0
-          ? `<button class="btn-mini" onclick="openPaymentModal('${doc.id}', ${d.remaining ?? d.total})">
-              💳 Bayar
-            </button>`
-          : `<span style="color:green;font-weight:bold;">✔ Lunas</span>`
-        }
-      </div>
-    </div>
-  `;
-});
-
-}
-
-import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-let currentPurchaseId = null;
-
-window.openPaymentModal = async function(id, remaining){
-  currentPurchaseId = id;
-
-  document.getElementById("payAmount").value = remaining;
-
-  // load akun
-  const snap = await getDocs(collection(db, "accounts"));
-  const select = document.getElementById("payAccount");
-  select.innerHTML = "";
-
-  snap.forEach(docSnap=>{
-    const d = docSnap.data();
-    select.innerHTML += `
-      <option value="${docSnap.id}">
-        ${d.name} (Rp ${Number(d.balance).toLocaleString("id-ID")})
-      </option>
-    `;
-  });
-
-  document.getElementById("paymentModal").style.display = "flex";
-}
-
-window.closePaymentModal = function(){
-  document.getElementById("paymentModal").style.display = "none";
-}
-
-window.savePayment = async function(){
-
-  const amount = Number(document.getElementById("payAmount").value);
-  const accountId = document.getElementById("payAccount").value;
-
-  if(!amount || !accountId){
-    alert("Lengkapi data");
-    return;
-  }
-
-  const purchaseRef = doc(db, "purchases", currentPurchaseId);
-  const purchaseSnap = await getDocs(query(collection(db, "purchases")));
-
-  // ambil data purchase
-  const purchaseDoc = await (await fetch(
-    `https://firestore.googleapis.com/v1/projects/YOUR_PROJECT_ID/databases/(default)/documents/purchases/${currentPurchaseId}`
-  ));
-
-}
-
-  
-loadSuppliers();
-loadProducts();
-loadPurchases();
-
-</script>
-  
+<!-- MODAL -->
 <div id="paymentModal" class="modal">
   <div class="modal-box">
     <h3>Catat Pembayaran</h3>
@@ -365,12 +128,227 @@ loadPurchases();
     <label>Keterangan</label>
     <textarea id="payNote"></textarea>
 
-    <div style="margin-top:12px;">
-      <button onclick="savePayment()">Simpan</button>
-      <button onclick="closePaymentModal()">Batal</button>
-    </div>
+    <button onclick="savePayment()">Simpan</button>
+    <button onclick="closePaymentModal()" style="background:#9ca3af;margin-top:8px;">Batal</button>
   </div>
 </div>
+
+<script type="module">
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  doc,
+  updateDoc,
+  getDoc,
+  query,
+  orderBy
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+
+const firebaseConfig = {
+  apiKey: "YOUR_KEY",
+  authDomain: "YOUR_AUTH",
+  projectId: "graha-berlian"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let suppliers=[];
+let products=[];
+let selectedSupplier=null;
+let selectedProduct=null;
+let currentPurchaseId=null;
+
+document.getElementById("date").value =
+  new Date().toISOString().split("T")[0];
+
+function generateInvoice(){
+  document.getElementById("invoice").value =
+    "PO-" + Date.now().toString().slice(-6);
+}
+generateInvoice();
+
+// =================== LOAD DATA ===================
+
+async function loadSuppliers(){
+  const snap=await getDocs(collection(db,"suppliers"));
+  suppliers=[];
+  snap.forEach(doc=>{
+    suppliers.push({
+      id:doc.id,
+      name:doc.data().companyName || doc.data().name
+    });
+  });
+}
+
+async function loadProducts(){
+  const snap=await getDocs(collection(db,"products"));
+  products=[];
+  snap.forEach(doc=>{
+    const d=doc.data();
+    products.push({
+      id:doc.id,
+      name:d.name,
+      price:d.price || 0
+    });
+  });
+}
+
+// =================== SEARCH ===================
+
+supplierSearch.addEventListener("input",()=>{
+  supplierResult.innerHTML="";
+  const keyword=supplierSearch.value.toLowerCase();
+
+  suppliers.filter(s=>s.name.toLowerCase().includes(keyword))
+  .forEach(s=>{
+    const div=document.createElement("div");
+    div.textContent=s.name;
+    div.onclick=()=>{
+      selectedSupplier=s;
+      supplierSearch.value=s.name;
+      supplierResult.innerHTML="";
+    };
+    supplierResult.appendChild(div);
+  });
+});
+
+productSearch.addEventListener("input",()=>{
+  productResult.innerHTML="";
+  const keyword=productSearch.value.toLowerCase();
+
+  products.filter(p=>p.name.toLowerCase().includes(keyword))
+  .forEach(p=>{
+    const div=document.createElement("div");
+    div.textContent=p.name;
+    div.onclick=()=>{
+      selectedProduct=p;
+      productSearch.value=p.name;
+      price.value=p.price;
+      calculateTotal();
+      productResult.innerHTML="";
+    };
+    productResult.appendChild(div);
+  });
+});
+
+// =================== TOTAL ===================
+
+function calculateTotal(){
+  total.value=(Number(qty.value)||0)*(Number(price.value)||0);
+}
+qty.addEventListener("input",calculateTotal);
+price.addEventListener("input",calculateTotal);
+
+// =================== SAVE ===================
+
+saveBtn.addEventListener("click",async()=>{
+  if(!selectedSupplier||!selectedProduct){
+    alert("Pilih supplier dan produk");
+    return;
+  }
+
+  await addDoc(collection(db,"purchases"),{
+    invoice:invoice.value,
+    date:date.value,
+    supplierName:selectedSupplier.name,
+    productName:selectedProduct.name,
+    qty:Number(qty.value),
+    price:Number(price.value),
+    total:Number(total.value),
+    paid:0,
+    remaining:Number(total.value),
+    status:"Belum Lunas",
+    note:note.value,
+    createdAt:new Date()
+  });
+
+  alert("Berhasil disimpan");
+  generateInvoice();
+  loadPurchases();
+});
+
+// =================== LIST ===================
+
+async function loadPurchases(){
+  list.innerHTML="";
+  const q=query(collection(db,"purchases"),orderBy("createdAt","desc"));
+  const snap=await getDocs(q);
+
+  snap.forEach(docSnap=>{
+    const d=docSnap.data();
+    const remaining=d.remaining ?? d.total;
+
+    list.innerHTML+=`
+      <div class="card">
+        <strong>${d.invoice}</strong><br>
+        ${d.productName} - ${d.supplierName}<br>
+        📅 ${d.date}<br>
+        💰 Total: Rp ${Number(d.total).toLocaleString("id-ID")}<br>
+        💳 Dibayar: Rp ${Number(d.paid||0).toLocaleString("id-ID")}<br>
+        🧾 Sisa: Rp ${Number(remaining).toLocaleString("id-ID")}<br>
+
+        ${
+          remaining>0
+          ? `<button class="btn-mini"
+              onclick="openPaymentModal('${docSnap.id}',${remaining})">
+              💳 Bayar
+            </button>`
+          : `<span style="color:green;font-weight:bold;">✔ Lunas</span>`
+        }
+      </div>
+    `;
+  });
+}
+
+// =================== MODAL ===================
+
+window.openPaymentModal=function(id,remaining){
+  currentPurchaseId=id;
+  payAmount.value=remaining;
+  payDate.value=new Date().toISOString().split("T")[0];
+  paymentModal.style.display="flex";
+};
+
+window.closePaymentModal=function(){
+  paymentModal.style.display="none";
+};
+
+window.savePayment=async function(){
+  const amount=Number(payAmount.value);
+  if(!amount){
+    alert("Isi jumlah pembayaran");
+    return;
+  }
+
+  const ref=doc(db,"purchases",currentPurchaseId);
+  const snap=await getDoc(ref);
+  const data=snap.data();
+
+  const newPaid=(data.paid||0)+amount;
+  const newRemaining=data.total-newPaid;
+
+  await updateDoc(ref,{
+    paid:newPaid,
+    remaining:newRemaining,
+    status:newRemaining<=0?"Lunas":"Belum Lunas",
+    lastPaymentDate:payDate.value,
+    lastPaymentNote:payNote.value
+  });
+
+  closePaymentModal();
+  loadPurchases();
+};
+
+loadSuppliers();
+loadProducts();
+loadPurchases();
+
+</script>
 
 </body>
 </html>
