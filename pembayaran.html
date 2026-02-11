@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Cara Bayar | Graha Berlian</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="global.css">
+</head>
+
+<body>
+
+<div class="content">
+
+  <!-- FORM -->
+  <div class="card">
+    <h3>Tambah Cara Bayar</h3>
+
+    <input id="name" placeholder="Cara Bayar (contoh: Tunai, Transfer BCA, QRIS)">
+    <button id="saveBtn">Simpan</button>
+  </div>
+
+  <!-- LIST -->
+  <div class="card">
+    <h3>Daftar Cara Bayar</h3>
+    <div id="list"></div>
+  </div>
+
+</div>
+
+<!-- AUTH GUARD -->
+<script type="module" src="./auth-guard.js"></script>
+
+<!-- LOGIC -->
+<script type="module">
+  import { loadLayout } from "./layout.js";
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    query,
+    orderBy
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  loadLayout("Cara Bayar");
+
+  const db = getFirestore();
+  const listEl = document.getElementById("list");
+
+  async function loadPaymentMethods() {
+    listEl.innerHTML = "";
+
+    const q = query(collection(db, "payment_methods"), orderBy("createdAt", "desc"));
+    const snap = await getDocs(q);
+
+    snap.forEach(doc => {
+      const d = doc.data();
+
+      listEl.innerHTML += `
+        <div class="card" style="padding:12px;">
+          💳 <strong>${d.name}</strong>
+        </div>
+      `;
+    });
+  }
+
+  document.getElementById("saveBtn").addEventListener("click", async () => {
+
+    const name = document.getElementById("name").value.trim();
+
+    if (!name) {
+      alert("Cara bayar wajib diisi");
+      return;
+    }
+
+    await addDoc(collection(db, "payment_methods"), {
+      name,
+      createdAt: new Date()
+    });
+
+    document.getElementById("name").value = "";
+
+    loadPaymentMethods();
+    alert("Cara bayar berhasil ditambahkan");
+  });
+
+  loadPaymentMethods();
+</script>
+
+</body>
+</html>
