@@ -1,0 +1,194 @@
+/* =====================
+   RESET & BASE
+===================== */
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #f4f6f8;
+  color: #1e293b;
+}
+
+h1, h2, h3 {
+  margin: 0;
+}
+
+/* =====================
+   HEADER
+===================== */
+.header {
+  height: 56px;
+  background: #2563eb;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.hamburger {
+  font-size: 24px;
+  margin-right: 16px;
+  cursor: pointer;
+}
+
+.title {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+/* =====================
+   DRAWER
+===================== */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: none;
+  z-index: 19;
+}
+
+.overlay.active {
+  display: block;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 260px;
+  height: 100vh;
+  background: #ffffff;
+  transform: translateX(-100%);
+  transition: 0.3s ease;
+  z-index: 20;
+  padding: 16px;
+  box-shadow: 4px 0 20px rgba(0,0,0,.1);
+}
+
+.drawer.active {
+  transform: translateX(0);
+}
+
+.drawer h2 {
+  margin: 10px 0 24px;
+  font-size: 18px;
+}
+
+/* =====================
+   MENU
+===================== */
+.menu a {
+  display: block;
+  padding: 12px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: #1e293b;
+  font-size: 15px;
+  margin-bottom: 6px;
+  transition: 0.2s;
+}
+
+.menu a:hover {
+  background: #e0e7ff;
+}
+
+.menu a.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.menu .logout {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+/* =====================
+   CONTENT
+===================== */
+.content {
+  padding: 16px;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 6px 16px rgba(0,0,0,.06);
+}
+
+.card h3 {
+  margin-bottom: 6px;
+  font-size: 16px;
+}
+
+.card p {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+/* =====================
+   FORM ELEMENTS
+===================== */
+input,
+select,
+button,
+textarea {
+  width: 100%;
+  padding: 12px;
+  font-size: 15px;
+  margin-top: 10px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  outline: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #2563eb;
+}
+
+button {
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+button.danger {
+  background: #dc2626;
+}
+
+/* =====================
+   BADGE
+===================== */
+.badge {
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.badge.admin {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge.staff {
+  background: #e0e7ff;
+  color: #1e40af;
+}
