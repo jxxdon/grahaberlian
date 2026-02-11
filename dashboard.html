@@ -3,14 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <title>Dashboard | Graha Berlian</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- BLOCK layar sebelum auth dicek -->
+  <style>
+    body { display:none; font-family: Arial, sans-serif; }
+  </style>
 </head>
 <body>
 
   <h1>Dashboard Keuangan</h1>
   <p>Selamat datang di sistem Graha Berlian</p>
 
-  <button id="logoutBtn">Logout</button>
+  <button onclick="logout()">Logout</button>
 
-  <script type="module" src="../src/auth-guard.js"></script>
+  <!-- AUTH GUARD WAJIB DI LOAD PALING AKHIR -->
+  <script type="module" src="./auth-guard.js"></script>
+
+  <!-- Buka body hanya jika JS berhasil -->
+  <script>
+    document.body.style.display = "block";
+  </script>
 </body>
 </html>
