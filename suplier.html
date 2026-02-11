@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Supplier | Graha Berlian</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="global.css">
+</head>
+
+<body>
+
+<div class="content">
+
+  <!-- FORM -->
+  <div class="card">
+    <h3>Tambah Supplier</h3>
+
+    <input id="companyName" placeholder="Nama Perusahaan / Nama Supplier">
+    <input id="picName" placeholder="Nama PIC (Penanggung Jawab)">
+    <input id="phone" placeholder="No. HP / WhatsApp">
+    <input id="email" placeholder="Email">
+    <textarea id="address" placeholder="Alamat lengkap"></textarea>
+    <input id="city" placeholder="Kota">
+    <input id="postalCode" placeholder="Kode Pos">
+    <input id="npwp" placeholder="NPWP (jika berbadan usaha)">
+
+    <button id="saveBtn">Simpan Supplier</button>
+  </div>
+
+  <!-- LIST -->
+  <div class="card">
+    <h3>Daftar Supplier</h3>
+    <div id="list"></div>
+  </div>
+
+</div>
+
+<!-- AUTH GUARD -->
+<script type="module" src="./auth-guard.js"></script>
+
+<!-- LOGIC -->
+<script type="module">
+  import { loadLayout } from "./layout.js";
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    query,
+    orderBy
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  loadLayout("Supplier");
+
+  const db = getFirestore();
+  const listEl = document.getElementById("list");
+
+  async function loadSuppliers() {
+    listEl.innerHTML = "";
+
+    const q = query(collection(db, "suppliers"), orderBy("createdAt", "desc"));
+    const snap = await getDocs(q);
+
+    snap.forEach(doc => {
+      const d = doc.data();
+
+      listEl.innerHTML += `
+        <div class="card" style="padding:12px;">
+          <strong>${d.companyName}</strong><br>
+          PIC: ${d.picName}<br>
+          📞 ${d.phone}<br>
+          ✉ ${d.email || "-"}<br>
+          📍 ${d.city} ${d.postalCode}
+        </div>
+      `;
+    });
+  }
+
+  document.getElementById("saveBtn").addEventListener("click", async () => {
+
+    const companyName = document.getElementById("companyName").value;
+    const picName = document.getElementById("picName").value;
+    const phone = document.getElementById("phone").value;
+    const email = document.getElementById("email").value;
+    const address = document.getElementById("address").value;
+    const city = document.getElementById("city").value;
+    const postalCode = document.getElementById("postalCode").value;
+    const npwp = document.getElementById("npwp").value;
+
+    if (!companyName || !phone) {
+      alert("Nama supplier dan No HP wajib diisi");
+      return;
+    }
+
+    await addDoc(collection(db, "suppliers"), {
+      companyName,
+      picName,
+      phone,
+      email,
+      address,
+      city,
+      postalCode,
+      npwp,
+      createdAt: new Date()
+    });
+
+    document.querySelectorAll("input, textarea").forEach(el => el.value = "");
+
+    loadSuppliers();
+    alert("Supplier berhasil ditambahkan");
+  });
+
+  loadSuppliers();
+</script>
+
+</body>
+</html>
