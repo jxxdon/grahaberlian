@@ -1,203 +1,229 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<title>Pembelian | Graha Berlian</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Pembelian | Graha Berlian</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="global.css">
 
-<style>
-body{
-  font-family:sans-serif;
-  background:#f3f4f6;
-  margin:0;
-}
-
-.layout{
-  max-width:700px;
-  margin:auto;
-  padding:16px;
-}
-
-.card{
-  background:white;
-  padding:16px;
-  border-radius:12px;
-  margin-bottom:16px;
-  box-shadow:0 4px 10px rgba(0,0,0,.05);
-}
-
-input, textarea{
-  width:100%;
-  padding:10px;
-  margin-bottom:10px;
-  border-radius:8px;
-  border:1px solid #ddd;
-}
-
-button{
-  background:#3b82f6;
-  color:white;
-  border:none;
-  padding:10px;
-  border-radius:8px;
-  width:100%;
-}
-
-.btn-mini{
-  width:auto;
-  padding:6px 10px;
-  font-size:13px;
-}
-</style>
+  <style>
+    .search-result {
+      background: #fff;
+      border-radius: 8px;
+      margin-top: 4px;
+      max-height: 150px;
+      overflow-y: auto;
+      box-shadow: 0 4px 10px rgba(0,0,0,.08);
+    }
+    .search-result div {
+      padding: 8px;
+      cursor: pointer;
+    }
+    .search-result div:hover {
+      background: #e0e7ff;
+    }
+  </style>
 </head>
 
 <body>
 
-<!-- WRAPPER -->
-<div id="app"></div>
+<div class="content">
 
-<!-- MODAL -->
-<div id="paymentModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);justify-content:center;align-items:center;">
-  <div style="background:white;padding:16px;border-radius:12px;width:90%;max-width:380px;">
-    <h3>Catat Pembayaran</h3>
-    <input type="number" id="payAmount" placeholder="Jumlah Bayar">
-    <button onclick="savePayment()">Simpan</button>
-    <button onclick="closePaymentModal()" style="background:#9ca3af;margin-top:8px;">Batal</button>
-  </div>
-</div>
-
-<script type="module">
-import {
-  collection,
-  addDoc,
-  getDocs,
-  doc,
-  updateDoc,
-  getDoc,
-  query,
-  orderBy
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-import { db } from "./firebase.js";
-
-import { loadLayout } from "./layout.js";
-
-/* ================= WRAPPER AKTIF ================= */
-loadLayout("Pembelian");
-
-/* Isi konten dimasukkan ke wrapper */
-document.getElementById("app").innerHTML += `
-<div class="layout">
-
+  <!-- FORM -->
   <div class="card">
     <h3>Input Pembelian</h3>
 
+    <label>Tanggal Pembelian</label>
     <input type="date" id="date">
-    <input id="invoice" readonly placeholder="Invoice">
 
-    <input type="text" id="supplier" placeholder="Supplier">
-    <input type="text" id="product" placeholder="Produk">
+    <input id="invoice" placeholder="No PO" readonly>
+
+    <label>Supplier</label>
+    <input type="text" id="supplierSearch" placeholder="Cari supplier...">
+    <div id="supplierResult" class="search-result"></div>
+
+    <label>Produk</label>
+    <input type="text" id="productSearch" placeholder="Cari produk...">
+    <div id="productResult" class="search-result"></div>
 
     <input type="number" id="qty" placeholder="Qty">
-    <input type="number" id="price" placeholder="Harga">
+    <input type="number" id="price" placeholder="Harga Satuan">
     <input type="number" id="total" placeholder="Total" readonly>
 
-    <button id="saveBtn">Simpan</button>
+    <textarea id="note" placeholder="Keterangan"></textarea>
+
+    <button id="saveBtn">Simpan Pembelian</button>
   </div>
 
+  <!-- LIST -->
   <div class="card">
     <h3>Daftar Pembelian</h3>
     <div id="list"></div>
   </div>
 
 </div>
-`;
 
-/* ================= LOGIC ================= */
+<script type="module" src="./auth-guard.js"></script>
 
-let currentId=null;
+<script type="module">
+  import { loadLayout } from "./layout.js";
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    query,
+    orderBy
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-const date=document.getElementById("date");
-const invoice=document.getElementById("invoice");
-const qty=document.getElementById("qty");
-const price=document.getElementById("price");
-const total=document.getElementById("total");
-const saveBtn=document.getElementById("saveBtn");
-const list=document.getElementById("list");
+  loadLayout("Pembelian");
 
-date.value=new Date().toISOString().split("T")[0];
-invoice.value="PO-"+Date.now().toString().slice(-6);
+  const db = getFirestore();
 
-function calculate(){
-  total.value=(Number(qty.value)||0)*(Number(price.value)||0);
-}
-qty.addEventListener("input",calculate);
-price.addEventListener("input",calculate);
+  const dateInput = document.getElementById("date");
+  const invoiceInput = document.getElementById("invoice");
+  const qtyInput = document.getElementById("qty");
+  const priceInput = document.getElementById("price");
+  const totalInput = document.getElementById("total");
+  const listEl = document.getElementById("list");
 
-saveBtn.addEventListener("click",async()=>{
-  await addDoc(collection(db,"purchases"),{
-    invoice:invoice.value,
-    date:date.value,
-    qty:Number(qty.value),
-    price:Number(price.value),
-    total:Number(total.value),
-    paid:0,
-    createdAt:new Date()
+  let suppliers = [];
+  let products = [];
+  let selectedSupplier = null;
+  let selectedProduct = null;
+
+  dateInput.value = new Date().toISOString().split("T")[0];
+
+  function generateInvoice() {
+    const timestamp = Date.now().toString().slice(-6);
+    invoiceInput.value = "PO-" + timestamp;
+  }
+  generateInvoice();
+
+  function calculateTotal() {
+    const qty = Number(qtyInput.value) || 0;
+    const price = Number(priceInput.value) || 0;
+    totalInput.value = qty * price;
+  }
+
+  qtyInput.addEventListener("input", calculateTotal);
+  priceInput.addEventListener("input", calculateTotal);
+
+  async function loadSuppliers() {
+    const snap = await getDocs(collection(db, "suppliers"));
+    snap.forEach(doc => {
+      const d = doc.data();
+      suppliers.push({ id: doc.id, name: d.companyName || d.name });
+    });
+  }
+
+  async function loadProducts() {
+    const snap = await getDocs(collection(db, "products"));
+    snap.forEach(doc => {
+      const d = doc.data();
+      products.push({
+        id: doc.id,
+        name: d.name,
+        price: d.price
+      });
+    });
+  }
+
+  async function loadPurchases() {
+    listEl.innerHTML = "";
+
+    const q = query(collection(db, "purchases"), orderBy("createdAt", "desc"));
+    const snap = await getDocs(q);
+
+    snap.forEach(doc => {
+      const d = doc.data();
+
+      listEl.innerHTML += `
+        <div class="card" style="padding:12px;">
+          <strong>${d.invoice}</strong><br>
+          ${d.productName} - ${d.supplierName}<br>
+          📅 ${d.date}<br>
+          💰 Rp ${Number(d.total).toLocaleString()}<br>
+          📝 ${d.note || "-"}
+        </div>
+      `;
+    });
+  }
+
+  document.getElementById("saveBtn").addEventListener("click", async () => {
+
+    if (!selectedSupplier || !selectedProduct) {
+      alert("Pilih supplier dan produk");
+      return;
+    }
+
+    const data = {
+      invoice: invoiceInput.value,
+      date: dateInput.value,
+      supplierId: selectedSupplier.id,
+      supplierName: selectedSupplier.name,
+      productId: selectedProduct.id,
+      productName: selectedProduct.name,
+      qty: Number(qtyInput.value),
+      price: Number(priceInput.value),
+      total: Number(totalInput.value),
+      note: document.getElementById("note").value,
+      createdAt: new Date()
+    };
+
+    await addDoc(collection(db, "purchases"), data);
+
+    alert("Pembelian berhasil disimpan");
+    location.reload();
   });
 
-  invoice.value="PO-"+Date.now().toString().slice(-6);
-  loadData();
-});
+  // SEARCH LOGIC
+  const supplierSearch = document.getElementById("supplierSearch");
+  const supplierResult = document.getElementById("supplierResult");
+  const productSearch = document.getElementById("productSearch");
+  const productResult = document.getElementById("productResult");
 
-async function loadData(){
-  list.innerHTML="";
-  const q=query(collection(db,"purchases"),orderBy("createdAt","desc"));
-  const snap=await getDocs(q);
+  supplierSearch.addEventListener("input", () => {
+    const keyword = supplierSearch.value.toLowerCase();
+    supplierResult.innerHTML = "";
 
-  snap.forEach(docSnap=>{
-    const d=docSnap.data();
-    const sisa=d.total-(d.paid||0);
-
-    list.innerHTML+=`
-      <div class="card">
-        <strong>${d.invoice}</strong><br>
-        Total: Rp ${d.total}<br>
-        Sisa: Rp ${sisa}<br>
-        ${
-          sisa>0
-          ? `<button class="btn-mini" onclick="openPaymentModal('${docSnap.id}',${sisa})">Bayar</button>`
-          : `<span style="color:green;font-weight:bold;">Lunas</span>`
-        }
-      </div>
-    `;
-  });
-}
-
-window.openPaymentModal=function(id,sisa){
-  currentId=id;
-  document.getElementById("payAmount").value=sisa;
-  document.getElementById("paymentModal").style.display="flex";
-};
-
-window.closePaymentModal=function(){
-  document.getElementById("paymentModal").style.display="none";
-};
-
-window.savePayment=async function(){
-  const amount=Number(document.getElementById("payAmount").value);
-  const ref=doc(db,"purchases",currentId);
-  const snap=await getDoc(ref);
-  const data=snap.data();
-
-  await updateDoc(ref,{
-    paid:(data.paid||0)+amount
+    suppliers.filter(s => s.name.toLowerCase().includes(keyword))
+      .slice(0,10)
+      .forEach(s => {
+        const div = document.createElement("div");
+        div.textContent = s.name;
+        div.onclick = () => {
+          selectedSupplier = s;
+          supplierSearch.value = s.name;
+          supplierResult.innerHTML = "";
+        };
+        supplierResult.appendChild(div);
+      });
   });
 
-  closePaymentModal();
-  loadData();
-};
+  productSearch.addEventListener("input", () => {
+    const keyword = productSearch.value.toLowerCase();
+    productResult.innerHTML = "";
 
-loadData();
+    products.filter(p => p.name.toLowerCase().includes(keyword))
+      .slice(0,10)
+      .forEach(p => {
+        const div = document.createElement("div");
+        div.textContent = p.name;
+        div.onclick = () => {
+          selectedProduct = p;
+          productSearch.value = p.name;
+          priceInput.value = p.price;
+          calculateTotal();
+          productResult.innerHTML = "";
+        };
+        productResult.appendChild(div);
+      });
+  });
+
+  loadSuppliers();
+  loadProducts();
+  loadPurchases();
 </script>
 
 </body>
