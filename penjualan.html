@@ -5,23 +5,42 @@
   <title>Penjualan | Graha Berlian</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="global.css">
+
+  <style>
+    .search-result {
+      background: #fff;
+      border-radius: 8px;
+      margin-top: 4px;
+      max-height: 150px;
+      overflow-y: auto;
+      box-shadow: 0 4px 10px rgba(0,0,0,.08);
+    }
+
+    .search-result div {
+      padding: 8px;
+      cursor: pointer;
+    }
+
+    .search-result div:hover {
+      background: #e0e7ff;
+    }
+  </style>
 </head>
 
 <body>
 
 <div class="content">
 
-  <!-- FORM -->
   <div class="card">
     <h3>Input Penjualan</h3>
 
-    <select id="customer">
-      <option value="">Pilih Konsumen</option>
-    </select>
+    <label>Konsumen</label>
+    <input type="text" id="customerSearch" placeholder="Cari konsumen...">
+    <div id="customerResult" class="search-result"></div>
 
-    <select id="product">
-      <option value="">Pilih Produk</option>
-    </select>
+    <label>Produk</label>
+    <input type="text" id="productSearch" placeholder="Cari produk...">
+    <div id="productResult" class="search-result"></div>
 
     <input type="number" id="qty" placeholder="Qty">
 
@@ -38,7 +57,6 @@
     <button id="saveBtn">Simpan Penjualan</button>
   </div>
 
-  <!-- LIST -->
   <div class="card">
     <h3>Daftar Penjualan</h3>
     <div id="list"></div>
@@ -56,53 +74,52 @@
     addDoc,
     getDocs,
     query,
-    orderBy,
-    doc,
-    getDoc
+    orderBy
   } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   loadLayout("Penjualan");
 
   const db = getFirestore();
 
-  const customerSelect = document.getElementById("customer");
-  const productSelect = document.getElementById("product");
-  const paymentSelect = document.getElementById("paymentMethod");
+  const customerSearch = document.getElementById("customerSearch");
+  const customerResult = document.getElementById("customerResult");
+
+  const productSearch = document.getElementById("productSearch");
+  const productResult = document.getElementById("productResult");
+
   const qtyInput = document.getElementById("qty");
   const priceInput = document.getElementById("price");
   const totalInput = document.getElementById("total");
+  const paymentSelect = document.getElementById("paymentMethod");
   const listEl = document.getElementById("list");
 
-  // Load Konsumen
+  let customers = [];
+  let products = [];
+  let selectedCustomer = null;
+  let selectedProduct = null;
+
+  // LOAD DATA
   async function loadCustomers() {
     const snap = await getDocs(collection(db, "customers"));
     snap.forEach(doc => {
       const d = doc.data();
-      customerSelect.innerHTML += `
-        <option value="${doc.id}" data-name="${d.fullName}">
-          ${d.fullName}
-        </option>
-      `;
+      customers.push({ id: doc.id, name: d.fullName });
     });
   }
 
-  // Load Produk
   async function loadProducts() {
     const snap = await getDocs(collection(db, "products"));
     snap.forEach(doc => {
       const d = doc.data();
-      productSelect.innerHTML += `
-        <option value="${doc.id}"
-          data-name="${d.name}"
-          data-price="${d.price}"
-          data-unit="${d.unit}">
-          ${d.name}
-        </option>
-      `;
+      products.push({
+        id: doc.id,
+        name: d.name,
+        price: d.price,
+        unit: d.unit
+      });
     });
   }
 
-  // Load Cara Bayar
   async function loadPayments() {
     const snap = await getDocs(collection(db, "payment_methods"));
     snap.forEach(doc => {
@@ -115,35 +132,86 @@
     });
   }
 
-  // Auto isi harga saat pilih produk
-  productSelect.addEventListener("change", () => {
-    const option = productSelect.options[productSelect.selectedIndex];
-    const price = option.getAttribute("data-price") || 0;
-    priceInput.value = price;
-    calculateTotal();
+  async function loadSales() {
+    listEl.innerHTML = "";
+    const q = query(collection(db, "sales"), orderBy("createdAt", "desc"));
+    const snap = await getDocs(q);
+
+    snap.forEach(doc => {
+      const d = doc.data();
+
+      listEl.innerHTML += `
+        <div class="card" style="padding:12px;">
+          <strong>${d.productName}</strong><br>
+          ${d.customerName}<br>
+          ${d.qty} ${d.unit}<br>
+          💰 Rp ${Number(d.total).toLocaleString()}
+        </div>
+      `;
+    });
+  }
+
+  // SEARCH CUSTOMER
+  customerSearch.addEventListener("input", () => {
+    const keyword = customerSearch.value.toLowerCase();
+    customerResult.innerHTML = "";
+
+    customers
+      .filter(c => c.name.toLowerCase().includes(keyword))
+      .slice(0, 10)
+      .forEach(c => {
+        const div = document.createElement("div");
+        div.textContent = c.name;
+        div.onclick = () => {
+          selectedCustomer = c;
+          customerSearch.value = c.name;
+          customerResult.innerHTML = "";
+        };
+        customerResult.appendChild(div);
+      });
   });
 
-  qtyInput.addEventListener("input", calculateTotal);
-  priceInput.addEventListener("input", calculateTotal);
+  // SEARCH PRODUCT
+  productSearch.addEventListener("input", () => {
+    const keyword = productSearch.value.toLowerCase();
+    productResult.innerHTML = "";
 
+    products
+      .filter(p => p.name.toLowerCase().includes(keyword))
+      .slice(0, 10)
+      .forEach(p => {
+        const div = document.createElement("div");
+        div.textContent = p.name;
+        div.onclick = () => {
+          selectedProduct = p;
+          productSearch.value = p.name;
+          productResult.innerHTML = "";
+          priceInput.value = p.price;
+          calculateTotal();
+        };
+        productResult.appendChild(div);
+      });
+  });
+
+  // HITUNG TOTAL
   function calculateTotal() {
     const qty = Number(qtyInput.value) || 0;
     const price = Number(priceInput.value) || 0;
     totalInput.value = qty * price;
   }
 
-  // Simpan transaksi
+  qtyInput.addEventListener("input", calculateTotal);
+  priceInput.addEventListener("input", calculateTotal);
+
+  // SIMPAN
   document.getElementById("saveBtn").addEventListener("click", async () => {
 
-    const customerOption = customerSelect.options[customerSelect.selectedIndex];
-    const productOption = productSelect.options[productSelect.selectedIndex];
+    const customerId = selectedCustomer?.id;
+    const customerName = selectedCustomer?.name;
 
-    const customerId = customerSelect.value;
-    const customerName = customerOption.getAttribute("data-name");
-
-    const productId = productSelect.value;
-    const productName = productOption.getAttribute("data-name");
-    const unit = productOption.getAttribute("data-unit");
+    const productId = selectedProduct?.id;
+    const productName = selectedProduct?.name;
+    const unit = selectedProduct?.unit;
 
     const qty = Number(qtyInput.value);
     const price = Number(priceInput.value);
@@ -174,25 +242,7 @@
     location.reload();
   });
 
-  // Load list penjualan
-  async function loadSales() {
-    const q = query(collection(db, "sales"), orderBy("createdAt", "desc"));
-    const snap = await getDocs(q);
-
-    snap.forEach(doc => {
-      const d = doc.data();
-
-      listEl.innerHTML += `
-        <div class="card" style="padding:12px;">
-          <strong>${d.productName}</strong><br>
-          ${d.customerName}<br>
-          ${d.qty} ${d.unit}<br>
-          💰 Rp ${Number(d.total).toLocaleString()}
-        </div>
-      `;
-    });
-  }
-
+  // INIT
   loadCustomers();
   loadProducts();
   loadPayments();
