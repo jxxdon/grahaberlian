@@ -29,6 +29,7 @@
 
 <div class="content">
 
+  <!-- FORM -->
   <div class="card">
     <h3>Input Penjualan</h3>
 
@@ -61,12 +62,29 @@
     <button id="saveBtn">Simpan Penjualan</button>
   </div>
 
-  <!-- FILTER -->
+  <!-- FILTER BULAN -->
   <div class="card">
-    <h3>Filter Tanggal</h3>
-    <input type="date" id="filterStart">
-    <input type="date" id="filterEnd">
-    <button onclick="filterSales()">Filter</button>
+    <h3>Filter Bulan</h3>
+
+    <select id="filterMonth">
+      <option value="">Pilih Bulan</option>
+      <option value="01">Januari</option>
+      <option value="02">Februari</option>
+      <option value="03">Maret</option>
+      <option value="04">April</option>
+      <option value="05">Mei</option>
+      <option value="06">Juni</option>
+      <option value="07">Juli</option>
+      <option value="08">Agustus</option>
+      <option value="09">September</option>
+      <option value="10">Oktober</option>
+      <option value="11">November</option>
+      <option value="12">Desember</option>
+    </select>
+
+    <select id="filterYear"></select>
+
+    <button onclick="filterSales()">Tampilkan</button>
   </div>
 
   <!-- LIST -->
@@ -101,26 +119,25 @@
   const totalInput = document.getElementById("total");
   const dpInput = document.getElementById("dp");
   const remainingInput = document.getElementById("remaining");
-  const listEl = document.getElementById("list");
   const paymentSelect = document.getElementById("paymentMethod");
+  const listEl = document.getElementById("list");
 
   let customers = [];
   let products = [];
   let selectedCustomer = null;
   let selectedProduct = null;
 
-  // DEFAULT TANGGAL
-  const today = new Date().toISOString().split("T")[0];
-  dateInput.value = today;
+  // Default tanggal hari ini
+  dateInput.value = new Date().toISOString().split("T")[0];
 
-  // GENERATE INVOICE
+  // Generate invoice
   function generateInvoice() {
     const timestamp = Date.now().toString().slice(-6);
     invoiceInput.value = "INV-" + timestamp;
   }
   generateInvoice();
 
-  // HITUNG TOTAL
+  // Hitung total & sisa
   function calculateTotal() {
     const qty = Number(qtyInput.value) || 0;
     const price = Number(priceInput.value) || 0;
@@ -135,7 +152,6 @@
   priceInput.addEventListener("input", calculateTotal);
   dpInput.addEventListener("input", calculateTotal);
 
-  // LOAD DATA
   async function loadCustomers() {
     const snap = await getDocs(collection(db, "customers"));
     snap.forEach(doc => {
@@ -165,7 +181,7 @@
     });
   }
 
-  async function loadSales(filterStart = null, filterEnd = null) {
+  async function loadSales(filterMonth = null, filterYear = null) {
     listEl.innerHTML = "";
 
     const q = query(collection(db, "sales"), orderBy("createdAt", "desc"));
@@ -174,8 +190,13 @@
     snap.forEach(doc => {
       const d = doc.data();
 
-      if (filterStart && filterEnd) {
-        if (d.date < filterStart || d.date > filterEnd) return;
+      if (filterMonth && filterYear) {
+        const saleMonth = d.date.split("-")[1];
+        const saleYear = d.date.split("-")[0];
+
+        if (saleMonth !== filterMonth || saleYear !== filterYear) {
+          return;
+        }
       }
 
       listEl.innerHTML += `
@@ -185,19 +206,25 @@
           📅 ${d.date}<br>
           💰 Rp ${Number(d.total).toLocaleString()}<br>
           💳 DP: Rp ${Number(d.dp || 0).toLocaleString()}<br>
-          🧾 Sisa: Rp ${Number(d.remaining || 0).toLocaleString()}
+          🧾 Sisa: Rp ${Number(d.remaining || 0).toLocaleString()}<br>
+          📝 ${d.note || "-"}
         </div>
       `;
     });
   }
 
   window.filterSales = function() {
-    const start = document.getElementById("filterStart").value;
-    const end = document.getElementById("filterEnd").value;
-    loadSales(start, end);
+    const month = document.getElementById("filterMonth").value;
+    const year = document.getElementById("filterYear").value;
+
+    if (!month || !year) {
+      alert("Pilih bulan dan tahun");
+      return;
+    }
+
+    loadSales(month, year);
   }
 
-  // SIMPAN
   document.getElementById("saveBtn").addEventListener("click", async () => {
 
     if (!selectedCustomer || !selectedProduct) {
@@ -228,6 +255,58 @@
     alert("Penjualan berhasil disimpan");
     location.reload();
   });
+
+  // SEARCH LOGIC
+  const customerSearch = document.getElementById("customerSearch");
+  const customerResult = document.getElementById("customerResult");
+  const productSearch = document.getElementById("productSearch");
+  const productResult = document.getElementById("productResult");
+
+  customerSearch.addEventListener("input", () => {
+    const keyword = customerSearch.value.toLowerCase();
+    customerResult.innerHTML = "";
+
+    customers.filter(c => c.name.toLowerCase().includes(keyword))
+      .slice(0,10)
+      .forEach(c => {
+        const div = document.createElement("div");
+        div.textContent = c.name;
+        div.onclick = () => {
+          selectedCustomer = c;
+          customerSearch.value = c.name;
+          customerResult.innerHTML = "";
+        };
+        customerResult.appendChild(div);
+      });
+  });
+
+  productSearch.addEventListener("input", () => {
+    const keyword = productSearch.value.toLowerCase();
+    productResult.innerHTML = "";
+
+    products.filter(p => p.name.toLowerCase().includes(keyword))
+      .slice(0,10)
+      .forEach(p => {
+        const div = document.createElement("div");
+        div.textContent = p.name;
+        div.onclick = () => {
+          selectedProduct = p;
+          productSearch.value = p.name;
+          priceInput.value = p.price;
+          calculateTotal();
+          productResult.innerHTML = "";
+        };
+        productResult.appendChild(div);
+      });
+  });
+
+  // Isi dropdown tahun otomatis
+  const yearSelect = document.getElementById("filterYear");
+  const currentYear = new Date().getFullYear();
+  for (let i = 0; i < 5; i++) {
+    const year = currentYear - i;
+    yearSelect.innerHTML += `<option value="${year}">${year}</option>`;
+  }
 
   loadCustomers();
   loadProducts();
