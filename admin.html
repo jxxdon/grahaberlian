@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin | Graha Berlian</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
+      background: #f4f6f8;
+    }
+
+    .header {
+      background: #2563eb;
+      color: #fff;
+      padding: 16px;
+      font-weight: 600;
+    }
+
+    .content {
+      padding: 16px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 15px;
+    }
+
+    button {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+
+    .user {
+      padding: 10px 0;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 14px;
+    }
+
+    .badge {
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-size: 12px;
+      margin-left: 6px;
+    }
+
+    .admin { background: #dcfce7; color: #166534; }
+    .staff { background: #e0e7ff; color: #1e40af; }
+  </style>
+</head>
+
+<body>
+
+<div class="header">Manajemen Admin & Staff</div>
+
+<div class="content">
+
+  <div class="card">
+    <h3>Tambah / Update User</h3>
+
+    <input id="uid" placeholder="User UID (dari Firebase Auth)">
+    <input id="nama" placeholder="Nama">
+    <input id="email" placeholder="Email">
+
+    <select id="role">
+      <option value="staff">Staff</option>
+      <option value="admin">Admin</option>
+    </select>
+
+    <button onclick="saveUser()">Simpan</button>
+  </div>
+
+  <div class="card">
+    <h3>Daftar User</h3>
+    <div id="list"></div>
+  </div>
+
+</div>
+
+<script type="module">
+  import { auth } from "./firebase.js";
+  import {
+    getFirestore, collection, doc, setDoc, getDocs
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import {
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+  const db = getFirestore();
+
+  // proteksi: hanya admin
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) location.href = "login.html";
+
+    const snap = await getDocs(collection(db, "users"));
+    let isAdmin = false;
+    snap.forEach(d => {
+      if (d.id === user.uid && d.data().role === "admin") {
+        isAdmin = true;
+      }
+    });
+
+    if (!isAdmin) {
+      alert("Akses ditolak");
+      location.href = "dashboard.html";
+    }
+  });
+
+  async function loadUsers() {
+    const list = document.getElementById("list");
+    list.innerHTML = "";
+
+    const snap = await getDocs(collection(db, "users"));
+    snap.forEach(docu => {
+      const d = docu.data();
+      list.innerHTML += `
+        <div class="user">
+          ${d.nama} (${d.email})
+          <span class="badge ${d.role}">${d.role}</span>
+        </div>
+      `;
+    });
+  }
+
+  async function saveUser() {
+    const uid = uidEl.value;
+    await setDoc(doc(db, "users", uid), {
+      nama: nama.value,
+      email: email.value,
+      role: role.value,
+      isActive: true,
+      createdAt: new Date()
+    });
+    loadUsers();
+  }
+
+  const uidEl = document.getElementById("uid");
+  const nama = document.getElementById("nama");
+  const email = document.getElementById("email");
+  const role = document.getElementById("role");
+
+  loadUsers();
+</script>
+
+<script type="module" src="./auth-guard.js"></script>
+</body>
+</html>
