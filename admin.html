@@ -5,6 +5,136 @@
   <title>Admin | Graha Berlian</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <!-- GLOBAL CSS -->
+  <link rel="stylesheet" href="global.css">
+</head>
+
+<body>
+
+  <div class="content">
+    <div class="card">
+      <h3>Tambah / Update User</h3>
+
+      <input id="uid" placeholder="UID (dari Firebase Auth)">
+      <input id="nama" placeholder="Nama">
+      <input id="email" placeholder="Email">
+
+      <select id="role">
+        <option value="staff">Staff</option>
+        <option value="admin">Admin</option>
+      </select>
+
+      <button id="saveBtn">Simpan</button>
+    </div>
+
+    <div class="card">
+      <h3>Daftar User</h3>
+      <div id="list"></div>
+    </div>
+  </div>
+
+  <!-- AUTH GUARD -->
+  <script type="module" src="./auth-guard.js"></script>
+
+  <!-- ADMIN LOGIC -->
+  <script type="module">
+    import { loadLayout } from "./layout.js";
+    import { auth } from "./firebase.js";
+    import {
+      getFirestore,
+      collection,
+      doc,
+      setDoc,
+      getDocs,
+      getDoc
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    import {
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    // Load drawer + header
+    loadLayout("Admin");
+
+    const db = getFirestore();
+
+    const uidEl = document.getElementById("uid");
+    const namaEl = document.getElementById("nama");
+    const emailEl = document.getElementById("email");
+    const roleEl = document.getElementById("role");
+    const listEl = document.getElementById("list");
+
+    // 🔒 Proteksi hanya admin
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        location.href = "login.html";
+        return;
+      }
+
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+
+      if (!userDoc.exists() || userDoc.data().role !== "admin") {
+        alert("Akses ditolak");
+        location.href = "dashboard.html";
+      }
+
+      loadUsers();
+    });
+
+    async function loadUsers() {
+      listEl.innerHTML = "";
+
+      const snap = await getDocs(collection(db, "users"));
+
+      snap.forEach(d => {
+        const data = d.data();
+
+        listEl.innerHTML += `
+          <div class="card" style="padding:10px;">
+            <strong>${data.nama || "-"}</strong><br>
+            ${data.email || "-"}<br>
+            <span class="badge ${data.role}">
+              ${data.role}
+            </span>
+          </div>
+        `;
+      });
+    }
+
+    document.getElementById("saveBtn").addEventListener("click", async () => {
+
+      if (!uidEl.value) {
+        alert("UID wajib diisi");
+        return;
+      }
+
+      await setDoc(doc(db, "users", uidEl.value), {
+        nama: namaEl.value,
+        email: emailEl.value,
+        role: roleEl.value,
+        isActive: true,
+        createdAt: new Date()
+      });
+
+      uidEl.value = "";
+      namaEl.value = "";
+      emailEl.value = "";
+
+      loadUsers();
+      alert("User berhasil disimpan");
+    });
+
+  </script>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin | Graha Berlian</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <style>
     body {
       margin: 0;
