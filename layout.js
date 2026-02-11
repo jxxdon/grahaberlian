@@ -18,6 +18,7 @@ export function loadLayout(titleText = "Dashboard") {
         <a href="penjualan.html">💰 Penjualan</a>
         <a href="Produk.html">📂 Produk</a>
         <a href="kategori.html">📂 Kategori</a>
+        <a href="pembayaran.html">📂 Pembayaran</a>
         <a href="konsumen.html">👤 Konsumen</a>
         <a href="suplier.html">👤 Supplier</a>
         <a href="laporan.html">📊 Laporan</a>
