@@ -23,6 +23,7 @@ export function loadLayout(titleText = "Dashboard") {
         <a href="suplier.html">👤 Supplier</a>
         <a href="laporan.html">📊 Laporan</a>
         <a href="hutang-pihutang.html">📕 Hutang - Piutang</a>
+        <a href="akun.html">⚙️ Akun</a>
         <a href="admin.html">⚙️ Admin</a>
         <a href="#" class="logout" onclick="logout()">🚪 Logout</a>
       </div>
