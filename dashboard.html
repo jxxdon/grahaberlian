@@ -1,36 +1,209 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <title>Dashboard | Graha Berlian</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>Home | Graha Berlian</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="global.css">
 
-  <!-- GLOBAL CSS -->
-  <link rel="stylesheet" href="global.css">
+<style>
+.summary-card {
+  text-align: center;
+  padding: 20px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: white;
+}
+
+.summary-card h2 {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.summary-card h1 {
+  font-size: 26px;
+  font-weight: bold;
+}
+
+.filter-box {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.filter-box select {
+  flex: 1;
+}
+
+.stat {
+  padding: 14px;
+  border-radius: 12px;
+  margin-top: 10px;
+  background: #f3f4f6;
+}
+
+.stat h4 {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.stat strong {
+  font-size: 18px;
+}
+</style>
 </head>
 
 <body>
 
-  <div class="content">
-    <div class="card">
-      <h3>Saldo Hari Ini</h3>
-      <p>Ringkasan keuangan hari ini</p>
-    </div>
+<div class="content">
 
-    <div class="card">
-      <h3>Transaksi Terakhir</h3>
-      <p>Belum ada data</p>
-    </div>
+  <!-- SALDO -->
+  <div class="summary-card">
+    <h2>Saldo Hari Ini</h2>
+    <h1 id="saldoHariIni">Rp 0</h1>
   </div>
 
-  <!-- AUTH GUARD -->
-  <script type="module" src="./auth-guard.js"></script>
+  <!-- REKAP BULAN -->
+  <div class="card">
+    <h3>Transaksi</h3>
 
-  <!-- LOAD GLOBAL LAYOUT -->
-  <script type="module">
-    import { loadLayout } from "./layout.js";
-    loadLayout("Dashboard");
-  </script>
+    <div class="filter-box">
+      <select id="bulan"></select>
+      <select id="tahun"></select>
+    </div>
+
+    <div class="stat">
+      <h4>Pemasukan</h4>
+      <strong id="pemasukan">Rp 0</strong>
+    </div>
+
+    <div class="stat">
+      <h4>Pengeluaran</h4>
+      <strong id="pengeluaran">Rp 0</strong>
+    </div>
+
+    <div class="stat">
+      <h4>Untung / Rugi</h4>
+      <strong id="untungRugi">Rp 0</strong>
+    </div>
+
+  </div>
+
+</div>
+
+<script type="module" src="./auth-guard.js"></script>
+
+<script type="module">
+import { loadLayout } from "./layout.js";
+import {
+  getFirestore,
+  collection,
+  getDocs
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+loadLayout("Home");
+
+const db = getFirestore();
+
+const saldoEl = document.getElementById("saldoHariIni");
+const pemasukanEl = document.getElementById("pemasukan");
+const pengeluaranEl = document.getElementById("pengeluaran");
+const untungRugiEl = document.getElementById("untungRugi");
+
+const bulanSelect = document.getElementById("bulan");
+const tahunSelect = document.getElementById("tahun");
+
+// INIT BULAN & TAHUN
+const bulanList = [
+  "Januari","Februari","Maret","April","Mei","Juni",
+  "Juli","Agustus","September","Oktober","November","Desember"
+];
+
+bulanList.forEach((b,i)=>{
+  bulanSelect.innerHTML += `<option value="${i}">${b}</option>`;
+});
+
+const currentYear = new Date().getFullYear();
+for(let y=currentYear-5; y<=currentYear+1; y++){
+  tahunSelect.innerHTML += `<option value="${y}">${y}</option>`;
+}
+
+bulanSelect.value = new Date().getMonth();
+tahunSelect.value = currentYear;
+
+// ====================
+// HITUNG SALDO TOTAL
+// ====================
+async function hitungSaldo() {
+
+  let totalMasuk = 0;
+  let totalKeluar = 0;
+
+  const salesSnap = await getDocs(collection(db, "sales"));
+  salesSnap.forEach(doc=>{
+    totalMasuk += Number(doc.data().total || 0);
+  });
+
+  const purchaseSnap = await getDocs(collection(db, "purchases"));
+  purchaseSnap.forEach(doc=>{
+    totalKeluar += Number(doc.data().total || 0);
+  });
+
+  const saldo = totalMasuk - totalKeluar;
+
+  saldoEl.textContent = formatRupiah(saldo);
+}
+
+// ====================
+// HITUNG BULANAN
+// ====================
+async function hitungBulanan() {
+
+  let totalMasuk = 0;
+  let totalKeluar = 0;
+
+  const bulan = Number(bulanSelect.value);
+  const tahun = Number(tahunSelect.value);
+
+  const salesSnap = await getDocs(collection(db, "sales"));
+  salesSnap.forEach(doc=>{
+    const d = doc.data();
+    const t = new Date(d.date);
+
+    if(t.getMonth()===bulan && t.getFullYear()===tahun){
+      totalMasuk += Number(d.total || 0);
+    }
+  });
+
+  const purchaseSnap = await getDocs(collection(db, "purchases"));
+  purchaseSnap.forEach(doc=>{
+    const d = doc.data();
+    const t = new Date(d.date);
+
+    if(t.getMonth()===bulan && t.getFullYear()===tahun){
+      totalKeluar += Number(d.total || 0);
+    }
+  });
+
+  pemasukanEl.textContent = formatRupiah(totalMasuk);
+  pengeluaranEl.textContent = formatRupiah(totalKeluar);
+  untungRugiEl.textContent = formatRupiah(totalMasuk - totalKeluar);
+}
+
+// ====================
+function formatRupiah(angka){
+  return "Rp " + angka.toLocaleString("id-ID");
+}
+
+// EVENT
+bulanSelect.addEventListener("change", hitungBulanan);
+tahunSelect.addEventListener("change", hitungBulanan);
+
+// INIT
+hitungSaldo();
+hitungBulanan();
+
+</script>
 
 </body>
 </html>
