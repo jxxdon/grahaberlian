@@ -24,6 +24,23 @@
     .search-result div:hover {
       background: #e0e7ff;
     }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.4);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 400px;
+    }
   </style>
 </head>
 
@@ -41,15 +58,15 @@
     <input type="text" id="subCategorySearch" placeholder="Cari sub kategori...">
     <div id="subCategoryResult" class="search-result"></div>
 
-    <select id="unit">
-      <option value="">Pilih Satuan</option>
-      <option value="m2">m2</option>
-      <option value="Unit">Unit</option>
-      <option value="Ls">Ls</option>
-    </select>
+    <label>Satuan</label>
+    <div style="display:flex; gap:6px;">
+      <select id="unitSelect" style="flex:1;">
+        <option value="">Pilih Satuan</option>
+      </select>
+      <button type="button" onclick="openUnitModal()">+</button>
+    </div>
 
     <input type="number" id="price" placeholder="Harga Satuan">
-
     <textarea id="note" placeholder="Keterangan"></textarea>
 
     <button id="saveBtn">Simpan Produk</button>
@@ -61,6 +78,16 @@
     <div id="list"></div>
   </div>
 
+</div>
+
+<!-- MODAL UNIT -->
+<div id="unitModal" class="modal">
+  <div class="modal-content">
+    <h3>Tambah Satuan</h3>
+    <input id="newUnitName" placeholder="Nama Satuan">
+    <button onclick="saveUnit()">Simpan</button>
+    <button onclick="closeUnitModal()">Batal</button>
+  </div>
 </div>
 
 <script type="module" src="./auth-guard.js"></script>
@@ -82,12 +109,15 @@
 
   const searchInput = document.getElementById("subCategorySearch");
   const resultBox = document.getElementById("subCategoryResult");
+  const unitSelect = document.getElementById("unitSelect");
   const listEl = document.getElementById("list");
 
   let subCategories = [];
   let selectedSubCategory = null;
 
+  // =====================
   // LOAD SUB KATEGORI
+  // =====================
   async function loadSubCategories() {
     const q = query(
       collection(db, "sub_categories"),
@@ -95,7 +125,6 @@
     );
 
     const snap = await getDocs(q);
-
     subCategories = [];
 
     snap.forEach(doc => {
@@ -109,8 +138,11 @@
     });
   }
 
-  // SEARCH AUTOCOMPLETE
+  // =====================
+  // SEARCH SUB KATEGORI
+  // =====================
   searchInput.addEventListener("input", () => {
+
     const keyword = searchInput.value.toLowerCase();
     resultBox.innerHTML = "";
 
@@ -138,11 +170,61 @@
       });
   });
 
+  // =====================
+  // LOAD UNITS
+  // =====================
+  async function loadUnits() {
+    unitSelect.innerHTML = `<option value="">Pilih Satuan</option>`;
+
+    const snap = await getDocs(collection(db, "units"));
+
+    snap.forEach(doc => {
+      const d = doc.data();
+      unitSelect.innerHTML += `
+        <option value="${d.name}">
+          ${d.name}
+        </option>
+      `;
+    });
+  }
+
+  // =====================
+  // MODAL CONTROL
+  // =====================
+  window.openUnitModal = function() {
+    document.getElementById("unitModal").style.display = "flex";
+  }
+
+  window.closeUnitModal = function() {
+    document.getElementById("unitModal").style.display = "none";
+  }
+
+  window.saveUnit = async function() {
+
+    const name = document.getElementById("newUnitName").value;
+
+    if (!name) {
+      alert("Isi nama satuan");
+      return;
+    }
+
+    await addDoc(collection(db, "units"), {
+      name,
+      createdAt: new Date()
+    });
+
+    document.getElementById("newUnitName").value = "";
+    closeUnitModal();
+    loadUnits();
+  }
+
+  // =====================
   // SIMPAN PRODUK
+  // =====================
   document.getElementById("saveBtn").addEventListener("click", async () => {
 
     const name = document.getElementById("productName").value;
-    const unit = document.getElementById("unit").value;
+    const unit = unitSelect.value;
     const price = Number(document.getElementById("price").value);
     const note = document.getElementById("note").value;
 
@@ -167,8 +249,11 @@
     location.reload();
   });
 
+  // =====================
   // LOAD PRODUK
+  // =====================
   async function loadProducts() {
+
     listEl.innerHTML = "";
 
     const q = query(
@@ -193,7 +278,9 @@
     });
   }
 
+  // INIT
   loadSubCategories();
+  loadUnits();
   loadProducts();
 </script>
 
