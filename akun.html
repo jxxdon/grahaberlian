@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Akun Keuangan | Graha Berlian</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="global.css">
+
+<style>
+.account-card {
+  padding: 14px;
+  border-radius: 12px;
+  background: #f3f4f6;
+  margin-top: 10px;
+}
+.account-card h4 {
+  margin-bottom: 4px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="content">
+
+  <!-- FORM -->
+  <div class="card">
+    <h3>Tambah Akun</h3>
+
+    <input id="accountName" placeholder="Nama Akun (contoh: Kas, Bank Mandiri)">
+    <input type="number" id="initialBalance" placeholder="Saldo Awal">
+
+    <button id="saveBtn">Simpan</button>
+  </div>
+
+  <!-- LIST -->
+  <div class="card">
+    <h3>Daftar Akun</h3>
+    <div id="list"></div>
+  </div>
+
+</div>
+
+<script type="module" src="./auth-guard.js"></script>
+
+<script type="module">
+import { loadLayout } from "./layout.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  orderBy
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+loadLayout("Akun Keuangan");
+
+const db = getFirestore();
+const listEl = document.getElementById("list");
+
+// SIMPAN AKUN
+document.getElementById("saveBtn").addEventListener("click", async () => {
+
+  const name = document.getElementById("accountName").value;
+  const balance = Number(document.getElementById("initialBalance").value) || 0;
+
+  if(!name){
+    alert("Isi nama akun");
+    return;
+  }
+
+  await addDoc(collection(db, "accounts"), {
+    name,
+    balance,
+    createdAt: new Date()
+  });
+
+  alert("Akun berhasil ditambahkan");
+
+  document.getElementById("accountName").value = "";
+  document.getElementById("initialBalance").value = "";
+
+  loadAccounts();
+});
+
+// LOAD AKUN
+async function loadAccounts(){
+
+  listEl.innerHTML = "";
+
+  const q = query(
+    collection(db, "accounts"),
+    orderBy("createdAt","desc")
+  );
+
+  const snap = await getDocs(q);
+
+  snap.forEach(doc=>{
+    const d = doc.data();
+
+    listEl.innerHTML += `
+      <div class="account-card">
+        <h4>${d.name}</h4>
+        💰 Rp ${Number(d.balance).toLocaleString("id-ID")}
+      </div>
+    `;
+  });
+}
+
+loadAccounts();
+
+</script>
+
+</body>
+</html>
