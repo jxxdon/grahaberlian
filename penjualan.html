@@ -25,7 +25,7 @@
 
     <input type="number" id="qty" placeholder="Qty">
 
-    <input type="number" id="price" placeholder="Harga Satuan" readonly>
+    <input type="number" id="price" placeholder="Harga Satuan">
 
     <input type="number" id="total" placeholder="Total" readonly>
 
@@ -124,6 +124,7 @@
   });
 
   qtyInput.addEventListener("input", calculateTotal);
+  priceInput.addEventListener("input", calculateTotal);
 
   function calculateTotal() {
     const qty = Number(qtyInput.value) || 0;
