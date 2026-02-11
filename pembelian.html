@@ -22,6 +22,20 @@
 .search-result div:hover {
   background: #e0e7ff;
 }
+  .btn-mini {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-mini:active {
+  transform: scale(0.96);
+}
+
 </style>
 </head>
 
@@ -258,22 +272,27 @@ async function loadPurchases(){
   const d = doc.data();
 
   listEl.innerHTML += `
-    <div class="card" style="padding:12px;">
+    <div class="card" style="padding:14px; margin-bottom:12px;">
       <strong>${d.invoice}</strong><br>
       ${d.productName} - ${d.supplierName}<br>
       📅 ${d.date}<br>
       💰 Total: Rp ${Number(d.total).toLocaleString("id-ID")}<br>
       💳 Dibayar: Rp ${Number(d.paid || 0).toLocaleString("id-ID")}<br>
-      🧾 Sisa: Rp ${Number(d.remaining || 0).toLocaleString("id-ID")}<br>
-      Status: ${d.status}<br>
-      ${
-        d.remaining > 0
-        ? `<button onclick="openPaymentModal('${doc.id}', ${d.remaining})">Catat Pembayaran</button>`
-        : ""
-      }
+      🧾 Sisa: Rp ${Number(d.remaining || d.total).toLocaleString("id-ID")}<br>
+
+      <div style="margin-top:8px;">
+        ${
+          (d.remaining ?? d.total) > 0
+          ? `<button class="btn-mini" onclick="openPaymentModal('${doc.id}', ${d.remaining ?? d.total})">
+              💳 Bayar
+            </button>`
+          : `<span style="color:green;font-weight:bold;">✔ Lunas</span>`
+        }
+      </div>
     </div>
   `;
 });
+
 }
 
 import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -334,12 +353,22 @@ loadPurchases();
 </script>
   
 <div id="paymentModal" class="modal">
-  <div class="modal-content">
+  <div class="modal-box">
     <h3>Catat Pembayaran</h3>
-    <input type="number" id="payAmount" placeholder="Nominal Bayar">
-    <select id="payAccount"></select>
-    <button onclick="savePayment()">Simpan</button>
-    <button onclick="closePaymentModal()">Batal</button>
+
+    <label>Tanggal Bayar</label>
+    <input type="date" id="payDate">
+
+    <label>Jumlah Pembayaran</label>
+    <input type="number" id="payAmount">
+
+    <label>Keterangan</label>
+    <textarea id="payNote"></textarea>
+
+    <div style="margin-top:12px;">
+      <button onclick="savePayment()">Simpan</button>
+      <button onclick="closePaymentModal()">Batal</button>
+    </div>
   </div>
 </div>
 
