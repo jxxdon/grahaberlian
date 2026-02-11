@@ -151,20 +151,10 @@ import {
   orderBy
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  
+import { db } from "./firebase-config.js";
 import { loadLayout } from "./layout.js";
-loadLayout("Pembelian");
+  loadLayout("Pembelian");
   
-const firebaseConfig = {
-  apiKey: "YOUR_KEY",
-  authDomain: "YOUR_AUTH",
-  projectId: "graha-berlian"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
 let suppliers=[];
 let products=[];
 let selectedSupplier=null;
