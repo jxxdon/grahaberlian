@@ -1,153 +1,16 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Dashboard | Graha Berlian</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <style>
-    * {
-      box-sizing: border-box;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-
-    body {
-      margin: 0;
-      background: #f4f6f8;
-    }
-
-    /* ===== HEADER ===== */
-    .header {
-      height: 56px;
-      background: #2563eb;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      padding: 0 16px;
-    }
-
-    .hamburger {
-      font-size: 24px;
-      cursor: pointer;
-      margin-right: 16px;
-    }
-
-    .title {
-      font-size: 18px;
-      font-weight: 600;
-    }
-
-    /* ===== DRAWER ===== */
-    .overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.4);
-      display: none;
-      z-index: 9;
-    }
-
-    .drawer {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 260px;
-      height: 100vh;
-      background: #ffffff;
-      box-shadow: 4px 0 20px rgba(0,0,0,.1);
-      transform: translateX(-100%);
-      transition: .3s;
-      z-index: 10;
-      padding: 16px;
-    }
-
-    .drawer.active {
-      transform: translateX(0);
-    }
-
-    .overlay.active {
-      display: block;
-    }
-
-    .drawer h2 {
-      margin: 8px 0 24px;
-      font-size: 18px;
-      color: #1e293b;
-    }
-
-    .menu a {
-      display: block;
-      padding: 12px;
-      border-radius: 10px;
-      color: #1e293b;
-      text-decoration: none;
-      font-size: 15px;
-      margin-bottom: 6px;
-    }
-
-    .menu a:hover {
-      background: #e0e7ff;
-    }
-
-    .menu .logout {
-      color: #dc2626;
-      font-weight: 600;
-    }
-
-    /* ===== CONTENT ===== */
-    .content {
-      padding: 16px;
-    }
-
-    .card {
-      background: #fff;
-      border-radius: 14px;
-      padding: 16px;
-      margin-bottom: 12px;
-      box-shadow: 0 6px 16px rgba(0,0,0,.06);
-    }
-
-    .card h3 {
-      margin: 0 0 6px;
-      font-size: 16px;
-    }
-
-    .card p {
-      margin: 0;
-      font-size: 14px;
-      color: #64748b;
-    }
-  </style>
+  <!-- GLOBAL CSS -->
+  <link rel="stylesheet" href="global.css">
 </head>
 
 <body>
 
-  <!-- HEADER -->
-  <div class="header">
-    <div class="hamburger" onclick="openDrawer()">☰</div>
-    <div class="title">Dashboard</div>
-  </div>
-
-  <!-- DRAWER -->
-  <div class="overlay" onclick="closeDrawer()"></div>
-
-  <div class="drawer" id="drawer">
-    <h2>Graha Berlian</h2>
-
-    <div class="menu">
-  <a href="dashboard.html">🏠 Home</a>
-  <a href="transaksi.html">💰 Transaksi</a>
-  <a href="kategori.html">📂 Kategori</a>
-  <a href="konsumen.html">👤 Konsumen</a>
-  <a href="suplier.html">🏭 Supplier</a>
-  <a href="laporan.html">📊 Laporan</a>
-  <a href="hutang-pihutang.html">📕 Hutang - Piutang</a>
-  <a href="admin.html">😁 Admin</a>   
-  <a href="#" class="logout" onclick="logout()">🚪 Logout</a>
-</div>
-
-  </div>
-
-  <!-- CONTENT -->
   <div class="content">
     <div class="card">
       <h3>Saldo Hari Ini</h3>
@@ -163,20 +26,11 @@
   <!-- AUTH GUARD -->
   <script type="module" src="./auth-guard.js"></script>
 
-  <!-- UI SCRIPT -->
-  <script>
-    const drawer = document.getElementById("drawer");
-    const overlay = document.querySelector(".overlay");
-
-    function openDrawer() {
-      drawer.classList.add("active");
-      overlay.classList.add("active");
-    }
-
-    function closeDrawer() {
-      drawer.classList.remove("active");
-      overlay.classList.remove("active");
-    }
+  <!-- LOAD GLOBAL LAYOUT -->
+  <script type="module">
+    import { loadLayout } from "./layout.js";
+    loadLayout("Dashboard");
   </script>
+
 </body>
 </html>
